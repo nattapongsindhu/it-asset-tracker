@@ -25,13 +25,17 @@ export const authOptions: NextAuthOptions = {
         const valid = await bcrypt.compare(credentials.password, user.passwordHash)
         if (!valid) return null
 
-        await logAudit({
-          userId:     user.id,
-          action:     'LOGIN',
-          entityType: 'user',
-          entityId:   user.id,
-          detail:     `${user.email} logged in`,
-        })
+        try {
+          await logAudit({
+            userId:     user.id,
+            action:     'LOGIN',
+            entityType: 'user',
+            entityId:   user.id,
+            detail:     `${user.email} logged in`,
+          })
+        } catch (error) {
+          console.error('Failed to write login audit log', error)
+        }
 
         return { id: user.id, email: user.email, name: user.name, role: user.role }
       },

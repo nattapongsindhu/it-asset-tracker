@@ -52,26 +52,28 @@ export async function createAsset(_state: ActionState, formData: FormData): Prom
   const status = data.assignedUserId ? 'ASSIGNED' : data.status === 'ASSIGNED' ? 'IN_STOCK' : data.status
 
   try {
-    const asset = await prisma.asset.create({
-      data: {
-        assetTag:       data.assetTag,
-        type:           data.type,
-        brand:          data.brand,
-        model:          data.model,
-        serialNumber:   data.serialNumber || null,
-        status,
-        assignedUserId: data.assignedUserId || null,
-        warrantyExpiry: data.warrantyExpiry ? new Date(data.warrantyExpiry) : null,
-        notes:          data.notes || null,
-      },
-    })
+    await prisma.$transaction(async (tx) => {
+      const asset = await tx.asset.create({
+        data: {
+          assetTag:       data.assetTag,
+          type:           data.type,
+          brand:          data.brand,
+          model:          data.model,
+          serialNumber:   data.serialNumber || null,
+          status,
+          assignedUserId: data.assignedUserId || null,
+          warrantyExpiry: data.warrantyExpiry ? new Date(data.warrantyExpiry) : null,
+          notes:          data.notes || null,
+        },
+      })
 
-    await logAudit({
-      userId:     session.user.id,
-      action:     'CREATE_ASSET',
-      entityType: 'asset',
-      entityId:   asset.id,
-      detail:     `Created asset ${asset.assetTag}`,
+      await logAudit({
+        userId:     session.user.id,
+        action:     'CREATE_ASSET',
+        entityType: 'asset',
+        entityId:   asset.id,
+        detail:     `Created asset ${asset.assetTag}`,
+      }, tx)
     })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : ''
@@ -105,27 +107,29 @@ export async function updateAsset(id: string, _state: ActionState, formData: For
   const status = data.assignedUserId ? 'ASSIGNED' : data.status === 'ASSIGNED' ? 'IN_STOCK' : data.status
 
   try {
-    await prisma.asset.update({
-      where: { id },
-      data: {
-        assetTag:       data.assetTag,
-        type:           data.type,
-        brand:          data.brand,
-        model:          data.model,
-        serialNumber:   data.serialNumber || null,
-        status,
-        assignedUserId: data.assignedUserId || null,
-        warrantyExpiry: data.warrantyExpiry ? new Date(data.warrantyExpiry) : null,
-        notes:          data.notes || null,
-      },
-    })
+    await prisma.$transaction(async (tx) => {
+      await tx.asset.update({
+        where: { id },
+        data: {
+          assetTag:       data.assetTag,
+          type:           data.type,
+          brand:          data.brand,
+          model:          data.model,
+          serialNumber:   data.serialNumber || null,
+          status,
+          assignedUserId: data.assignedUserId || null,
+          warrantyExpiry: data.warrantyExpiry ? new Date(data.warrantyExpiry) : null,
+          notes:          data.notes || null,
+        },
+      })
 
-    await logAudit({
-      userId:     session.user.id,
-      action:     'EDIT_ASSET',
-      entityType: 'asset',
-      entityId:   id,
-      detail:     `Updated asset ${data.assetTag}`,
+      await logAudit({
+        userId:     session.user.id,
+        action:     'EDIT_ASSET',
+        entityType: 'asset',
+        entityId:   id,
+        detail:     `Updated asset ${data.assetTag}`,
+      }, tx)
     })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : ''
@@ -139,21 +143,21 @@ export async function updateAsset(id: string, _state: ActionState, formData: For
 }
 
 export async function deleteAsset(id: string) {
-  await requireAdmin()
+  const session = await requireAdmin()
 
-  const asset = await prisma.asset.findUnique({ where: { id } })
-  if (!asset) return
+  await prisma.$transaction(async (tx) => {
+    const asset = await tx.asset.findUnique({ where: { id } })
+    if (!asset) return
 
-  const session = await getServerSession(authOptions)
+    await tx.asset.delete({ where: { id } })
 
-  await prisma.asset.delete({ where: { id } })
-
-  await logAudit({
-    userId:     session?.user.id,
-    action:     'DELETE_ASSET',
-    entityType: 'asset',
-    entityId:   id,
-    detail:     `Deleted asset ${asset.assetTag}`,
+    await logAudit({
+      userId:     session.user.id,
+      action:     'DELETE_ASSET',
+      entityType: 'asset',
+      entityId:   id,
+      detail:     `Deleted asset ${asset.assetTag}`,
+    }, tx)
   })
 
   revalidatePath('/assets')
