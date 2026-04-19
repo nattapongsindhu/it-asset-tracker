@@ -28,6 +28,8 @@
 ## Local Setup
 
 ```bash
+git clone https://github.com/nattapongsindhu/it-asset-tracker.git
+cd it-asset-tracker
 npm install
 npx prisma migrate dev
 npm run seed
