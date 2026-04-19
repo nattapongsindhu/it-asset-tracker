@@ -36,7 +36,7 @@ npm run seed
 npm run dev
 ```
 
-App runs at `(http://localhost:3000)`
+App runs at `(url)http://localhost:3000(url)`
 
 ---
 
