@@ -1,6 +1,10 @@
+import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { Nav } from '@/app/components/Nav'
-import { getSupabaseSessionUser } from '@/lib/supabase/session'
+import { PencilLine } from 'lucide-react'
+import { AppShell } from '@/app/components/AppShell'
+import { PrintButton } from '@/app/components/PrintButton'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { requireSupabaseUser } from '@/lib/supabase/session'
 import { DeleteAssetButton } from './DeleteAssetButton'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -12,56 +16,109 @@ const STATUS_LABELS: Record<string, string> = {
 
 type Props = { params: { id: string } }
 
-export default async function AssetDetailPage({ params }: Props) {
-  const user = await getSupabaseSessionUser()
-  const isAdmin = user?.role === 'ADMIN'
+function formatValue(value: string | null | undefined) {
+  return value && value.trim().length > 0 ? value : '-'
+}
 
-  // TODO: Implement Supabase select for asset detail by id.
+function formatDate(value: string | null | undefined) {
+  if (!value) {
+    return '-'
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    dateStyle: 'medium',
+    timeStyle: value.includes('T') ? 'short' : undefined,
+  }).format(new Date(value))
+}
+
+export default async function AssetDetailPage({ params }: Props) {
+  const user = await requireSupabaseUser()
+  const isAdmin = user.role === 'ADMIN'
+  const supabase = createSupabaseServerClient()
+
+  const { data: asset } = await supabase
+    .from('assets')
+    .select(
+      'id, asset_tag, category, brand, model, serial_number, status, assigned_user_id, warranty_expiry, notes, created_at, updated_at'
+    )
+    .eq('id', params.id)
+    .maybeSingle()
+
+  if (!asset) {
+    notFound()
+  }
+
+  let assignedUserName = '-'
+
+  if (asset.assigned_user_id) {
+    const { data: assignedUser } = await supabase
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', asset.assigned_user_id)
+      .maybeSingle()
+
+    assignedUserName = assignedUser?.full_name ?? assignedUser?.email ?? '-'
+  }
+
   const rows = [
-    { label: 'Asset Tag', value: params.id },
-    { label: 'Type', value: '-' },
-    { label: 'Brand', value: '-' },
-    { label: 'Model', value: '-' },
-    { label: 'Serial Number', value: '-' },
-    { label: 'Status', value: STATUS_LABELS.IN_STOCK },
-    { label: 'Assigned To', value: '-' },
-    { label: 'Warranty Expiry', value: '-' },
-    { label: 'Created', value: '-' },
-    { label: 'Last Updated', value: '-' },
+    { label: 'Asset Tag', value: formatValue(asset.asset_tag) },
+    { label: 'Type', value: formatValue(asset.category) },
+    { label: 'Brand', value: formatValue(asset.brand) },
+    { label: 'Model', value: formatValue(asset.model) },
+    { label: 'Serial Number', value: formatValue(asset.serial_number) },
+    { label: 'Status', value: STATUS_LABELS[asset.status ?? ''] ?? asset.status ?? '-' },
+    { label: 'Assigned To', value: assignedUserName },
+    { label: 'Warranty Expiry', value: formatDate(asset.warranty_expiry) },
+    { label: 'Created', value: formatDate(asset.created_at) },
+    { label: 'Last Updated', value: formatDate(asset.updated_at) },
+    { label: 'Notes', value: formatValue(asset.notes) },
   ]
 
   return (
-    <>
-      <Nav />
-      <main className="max-w-3xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
+    <AppShell currentPath="/dashboard/assets" user={user}>
+      <section className="mx-auto max-w-4xl">
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <Link href="/assets" className="text-sm text-gray-500 hover:text-gray-800">← Assets</Link>
-            <h1 className="text-xl font-semibold text-gray-800 mt-1 font-mono">{params.id}</h1>
-            <p className="text-xs text-gray-400 mt-2">TODO: Implement Supabase asset detail query.</p>
+            <Link href="/dashboard/assets" className="text-sm font-medium text-slate-500 hover:text-slate-800">
+              Back to assets
+            </Link>
+            <h1 className="mt-2 font-mono text-3xl font-semibold tracking-tight text-slate-900">
+              {asset.asset_tag ?? params.id}
+            </h1>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              Review the current asset record, assignment, and timestamps in a compact detail view.
+            </p>
           </div>
-          {isAdmin && (
-            <div className="flex gap-2">
+
+          <div className="flex flex-wrap items-center gap-3">
+            {isAdmin && (
               <Link
                 href={`/assets/${params.id}/edit`}
-                className="border border-gray-300 text-gray-700 text-sm px-4 py-2 rounded hover:bg-gray-50"
+                className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900"
               >
-                Edit
+                <span className="inline-flex items-center gap-2">
+                  <PencilLine className="h-4 w-4" />
+                  Edit
+                </span>
               </Link>
-              <DeleteAssetButton id={params.id} assetTag={params.id} />
-            </div>
-          )}
+            )}
+            <PrintButton />
+            {isAdmin && <DeleteAssetButton id={params.id} assetTag={asset.asset_tag ?? params.id} />}
+          </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+        <div className="print-card overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
           {rows.map(row => (
-            <div key={row.label} className="flex px-5 py-3">
-              <span className="w-40 text-sm text-gray-500 shrink-0">{row.label}</span>
-              <span className="text-sm text-gray-800">{row.value}</span>
+            <div
+              key={row.label}
+              className="flex flex-col gap-2 border-b border-slate-100 px-5 py-4 last:border-b-0 sm:flex-row"
+            >
+              <span className="w-44 shrink-0 text-sm font-medium text-slate-500">{row.label}</span>
+              <span className="text-sm leading-7 text-slate-800">{row.value}</span>
             </div>
           ))}
         </div>
-      </main>
-    </>
+      </section>
+    </AppShell>
   )
 }

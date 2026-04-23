@@ -3,23 +3,29 @@ import type { User } from '@supabase/supabase-js'
 import type { AppRole, AppSessionUser } from '@/types/app'
 import { createSupabaseServerClient } from './server'
 
+type ProfileRow = {
+  email: string | null
+  full_name: string | null
+  role: string | null
+}
+
 function normalizeRole(role: unknown): AppRole {
   return role === 'ADMIN' ? 'ADMIN' : 'STAFF'
 }
 
-function mapUser(user: User): AppSessionUser {
+function mapUser(user: User, profile: ProfileRow | null): AppSessionUser {
   const metadata = user.user_metadata ?? {}
-  const appMetadata = user.app_metadata ?? {}
-  const name =
+  const fallbackName =
     typeof metadata.name === 'string' && metadata.name.trim().length > 0
       ? metadata.name
       : user.email?.split('@')[0] ?? 'User'
+  const profileName = profile?.full_name?.trim()
 
   return {
     id: user.id,
-    email: user.email ?? '',
-    name,
-    role: normalizeRole(appMetadata.role ?? metadata.role),
+    email: profile?.email ?? user.email ?? '',
+    name: profileName && profileName.length > 0 ? profileName : fallbackName,
+    role: normalizeRole(profile?.role),
   }
 }
 
@@ -30,7 +36,17 @@ export async function getSupabaseSessionUser(): Promise<AppSessionUser | null> {
       data: { user },
     } = await supabase.auth.getUser()
 
-    return user ? mapUser(user) : null
+    if (!user) {
+      return null
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email, full_name, role')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    return mapUser(user, profile ?? null)
   } catch {
     return null
   }

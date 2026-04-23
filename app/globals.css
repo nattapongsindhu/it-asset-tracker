@@ -1,3 +1,55 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+@media print {
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  body {
+    color: #0f172a;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .print-hide {
+    display: none !important;
+  }
+
+  .print-shell {
+    padding: 0 !important;
+  }
+
+  .print-sheet {
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .print-card {
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .print-table th,
+  .print-table td {
+    padding: 8px 10px !important;
+    font-size: 11px !important;
+  }
+
+  .print-table thead {
+    display: table-header-group;
+  }
+
+  .print-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_PATHS = ['/login', '/auth/callback', '/auth/magic-link'] as const
+const PUBLIC_PATHS = ['/login', '/auth/callback'] as const
 type SupabaseCookie = {
   name: string
   value: string
@@ -12,19 +12,9 @@ function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
 }
 
-function isProtectedPath(pathname: string) {
-  return (
-    pathname === '/dashboard' ||
-    pathname.startsWith('/dashboard/') ||
-    pathname === '/assets' ||
-    pathname.startsWith('/assets/') ||
-    pathname === '/audit' ||
-    pathname.startsWith('/audit/')
-  )
-}
-
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
+  const publicPath = isPublicPath(pathname)
 
   let response = NextResponse.next({
     request: {
@@ -36,7 +26,7 @@ export async function middleware(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    if (isProtectedPath(pathname)) {
+    if (!publicPath) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
@@ -76,7 +66,7 @@ export async function middleware(request: NextRequest) {
     user = null
   }
 
-  if (!user && isProtectedPath(pathname) && !isPublicPath(pathname)) {
+  if (!user && !publicPath) {
     const loginUrl = new URL('/login', request.url)
     const nextPath = `${pathname}${request.nextUrl.search}`
 

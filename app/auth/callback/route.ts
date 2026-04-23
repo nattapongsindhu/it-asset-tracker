@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 function getSafeRedirectPath(request: NextRequest) {
   const next = request.nextUrl.searchParams.get('next')
 
-  if (next && next.startsWith('/')) {
+  if (next && next.startsWith('/') && !next.startsWith('/login') && !next.startsWith('/auth/')) {
     return next
   }
 

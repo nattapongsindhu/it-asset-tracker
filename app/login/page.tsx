@@ -1,133 +1,79 @@
-'use client'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
+import { redirect } from 'next/navigation'
+import { KeyRound, ShieldCheck } from 'lucide-react'
+import { LoginForm } from './LoginForm'
+import { getSupabaseSessionUser } from '@/lib/supabase/session'
 
-export default function LoginPage() {
-  const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
-  const [loading, setLoading] = useState(false)
+type Props = {
+  searchParams?: {
+    next?: string | string[]
+  }
+}
 
-  async function handlePasswordSignIn(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-    setMessage('')
-    setLoading(true)
+function getSingleValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value
+}
 
-    try {
-      const supabase = createSupabaseBrowserClient()
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
-      })
+function getSafeRedirectPath(value: string | string[] | undefined) {
+  const nextPath = getSingleValue(value)
 
-      if (signInError) {
-        setError(signInError.message)
-        return
-      }
-
-      router.push('/dashboard')
-      router.refresh()
-    } catch (caughtError) {
-      const message =
-        caughtError instanceof Error ? caughtError.message : 'Unable to sign in right now.'
-      setError(message)
-    } finally {
-      setLoading(false)
-    }
+  if (nextPath && nextPath.startsWith('/') && !nextPath.startsWith('/login') && !nextPath.startsWith('/auth/')) {
+    return nextPath
   }
 
-  async function handleMagicLink() {
-    setError('')
-    setMessage('')
-    setLoading(true)
+  return '/dashboard'
+}
 
-    try {
-      const supabase = createSupabaseBrowserClient()
-      const redirectUrl =
-        (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '') +
-        '/auth/callback'
+export default async function LoginPage({ searchParams }: Props) {
+  const nextPath = getSafeRedirectPath(searchParams?.next)
+  const user = await getSupabaseSessionUser()
 
-      const { error: magicLinkError } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: {
-          emailRedirectTo: redirectUrl,
-        },
-      })
-
-      if (magicLinkError) {
-        setError(magicLinkError.message)
-        return
-      }
-
-      setMessage('Magic link sent. Check your inbox to continue.')
-    } catch (caughtError) {
-      const message =
-        caughtError instanceof Error ? caughtError.message : 'Unable to send the magic link.'
-      setError(message)
-    } finally {
-      setLoading(false)
-    }
+  if (user) {
+    redirect(nextPath)
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white border border-gray-200 rounded-lg p-8 w-full max-w-sm shadow-sm">
-        <h1 className="text-xl font-semibold text-gray-800 mb-1">IT Asset Tracker</h1>
-        <p className="text-sm text-gray-500 mb-6">Sign in with a password or request a magic link.</p>
+    <div className="min-h-screen bg-[#f3efe6]">
+      <div className="mx-auto grid min-h-screen max-w-6xl gap-10 px-6 py-12 lg:grid-cols-[1.05fr_0.95fr] lg:px-10">
+        <div className="flex flex-col justify-center">
+          <div className="max-w-xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">
+              IT Asset Tracker
+            </p>
+            <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
+              Hybrid sign-in for a clean internal asset workflow.
+            </h1>
+            <p className="mt-6 text-base leading-8 text-slate-600">
+              Magic link and email/password access both land in the same Supabase-backed workspace,
+              with clear roles for admins and staff.
+            </p>
 
-        <form onSubmit={handlePasswordSignIn} className="flex flex-col gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-[1.75rem] border border-white/70 bg-white/70 p-5 shadow-sm backdrop-blur">
+                <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <ShieldCheck className="h-4 w-4" />
+                  Safe entry
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Middleware guards protected routes and returns authenticated users to the dashboard.
+                </p>
+              </div>
+              <div className="rounded-[1.75rem] border border-white/70 bg-white/70 p-5 shadow-sm backdrop-blur">
+                <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <KeyRound className="h-4 w-4" />
+                  Orderly access
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Admins can manage inventory while staff stay in a read-only flow with the same layout.
+                </p>
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+        </div>
+
+        <div className="flex items-center justify-center">
+          <div className="w-full max-w-lg">
+            <LoginForm nextPath={nextPath} />
           </div>
-
-          {message && (
-            <p className="text-sm text-green-600">{message}</p>
-          )}
-
-          {error && (
-            <p className="text-sm text-red-600">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-blue-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? 'Signing in...' : 'Sign in with Password'}
-          </button>
-        </form>
-
-        <div className="mt-4 border-t border-gray-200 pt-4">
-          <button
-            type="button"
-            disabled={loading || !email.trim()}
-            onClick={handleMagicLink}
-            className="w-full border border-gray-300 text-gray-700 rounded px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
-          >
-            Send Magic Link
-          </button>
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 'use client'
 import { useFormState } from 'react-dom'
+import { Save } from 'lucide-react'
 import type { AssetRecord, AssetUserOption } from '@/types/app'
 
 const STATUSES = [
@@ -16,10 +17,18 @@ type ActionState = { error?: string } | undefined
 type Props = {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
   asset?: AssetRecord
+  cancelHref?: string
+  submitLabel?: string
   users: AssetUserOption[]
 }
 
-export function AssetForm({ action, asset, users }: Props) {
+export function AssetForm({
+  action,
+  asset,
+  cancelHref = '/dashboard/assets',
+  submitLabel = 'Save Asset',
+  users,
+}: Props) {
   const [state, formAction] = useFormState(action, undefined)
 
   const warrantyValue = asset?.warrantyExpiry
@@ -27,9 +36,9 @@ export function AssetForm({ action, asset, users }: Props) {
     : ''
 
   return (
-    <form action={formAction} className="bg-white border border-gray-200 rounded-lg p-6 flex flex-col gap-5">
+    <form action={formAction} className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm flex flex-col gap-5">
       {state?.error && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{state.error}</p>
+        <p className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{state.error}</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -40,7 +49,7 @@ export function AssetForm({ action, asset, users }: Props) {
             name="type"
             defaultValue={asset?.type ?? ''}
             required
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
           >
             <option value="">Select type</option>
             {TYPES.map(type => <option key={type} value={type}>{type}</option>)}
@@ -55,7 +64,7 @@ export function AssetForm({ action, asset, users }: Props) {
             name="status"
             defaultValue={asset?.status ?? 'IN_STOCK'}
             required
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
           >
             {STATUSES.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
           </select>
@@ -65,7 +74,7 @@ export function AssetForm({ action, asset, users }: Props) {
           <select
             name="assignedUserId"
             defaultValue={asset?.assignedUserId ?? ''}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
           >
             <option value="">Unassigned</option>
             {users.map(user => (
@@ -79,7 +88,7 @@ export function AssetForm({ action, asset, users }: Props) {
             type="date"
             name="warrantyExpiry"
             defaultValue={warrantyValue}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
           />
         </div>
       </div>
@@ -91,18 +100,21 @@ export function AssetForm({ action, asset, users }: Props) {
           defaultValue={asset?.notes ?? ''}
           rows={3}
           maxLength={2000}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+          className="w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 resize-y"
         />
       </div>
 
       <div className="flex gap-3">
         <button
           type="submit"
-          className="bg-blue-600 text-white text-sm px-5 py-2 rounded hover:bg-blue-700"
+          className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700"
         >
-          Save
+          <span className="inline-flex items-center gap-2">
+            <Save className="h-4 w-4" />
+            {submitLabel}
+          </span>
         </button>
-        <a href="/assets" className="text-sm text-gray-500 self-center hover:text-gray-800">Cancel</a>
+        <a href={cancelHref} className="self-center text-sm text-slate-500 hover:text-slate-800">Cancel</a>
       </div>
     </form>
   )
@@ -122,7 +134,7 @@ function Field({ label, name, defaultValue, required }: {
         name={name}
         defaultValue={defaultValue ?? ''}
         required={required}
-        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
       />
     </div>
   )
