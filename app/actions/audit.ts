@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseAdmin } from '@/lib/supabase/session'
 
 function revalidateAuditViews() {
@@ -11,7 +11,7 @@ function revalidateAuditViews() {
 export async function deleteAuditLog(id: string) {
   await requireSupabaseAdmin('/audit')
 
-  const supabase = createSupabaseAdminClient()
+  const supabase = createSupabaseServerClient()
   const { error } = await supabase.from('audit_logs').delete().eq('id', id)
 
   if (error) {
@@ -25,7 +25,7 @@ export async function deleteAuditLog(id: string) {
 export async function clearAuditLogs() {
   await requireSupabaseAdmin('/audit')
 
-  const supabase = createSupabaseAdminClient()
+  const supabase = createSupabaseServerClient()
   const { error } = await supabase.from('audit_logs').delete().not('id', 'is', null)
 
   if (error) {
