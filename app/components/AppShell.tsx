@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { AppSessionUser } from '@/types/app'
 import { PlaceholderActionGroup } from './PlaceholderActionGroup'
 import { Nav } from './Nav'
+import { PrintButton } from './PrintButton'
 
 type Props = {
   children: ReactNode
@@ -32,6 +33,7 @@ export function AppShell({ children, currentPath, user }: Props) {
                   Role {user.role}
                 </span>
                 <PlaceholderActionGroup showEdit={isAdmin} />
+                <PrintButton />
               </div>
             </div>
           </div>

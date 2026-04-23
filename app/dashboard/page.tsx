@@ -10,7 +10,6 @@ import {
 } from 'lucide-react'
 import { AppShell } from '@/app/components/AppShell'
 import { PlaceholderActionGroup } from '@/app/components/PlaceholderActionGroup'
-import { PrintButton } from '@/app/components/PrintButton'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseUser } from '@/lib/supabase/session'
 
@@ -91,8 +90,8 @@ export default async function DashboardPage() {
 
   return (
     <AppShell currentPath="/dashboard" user={user}>
-      <section className="mx-auto max-w-6xl">
-        <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <section className="print-sheet mx-auto max-w-6xl">
+        <div className="print-page-header mb-8 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
               Dashboard
@@ -106,8 +105,7 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <PrintButton label="Print Summary" />
+          <div className="print-hide flex flex-wrap items-center gap-3">
             {isAdmin && (
               <Link
                 href="/dashboard/assets?new=1"
@@ -120,7 +118,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="print-stats-grid grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           {stats.map(stat => {
             const Icon = stat.icon
 
@@ -140,22 +138,21 @@ export default async function DashboardPage() {
                 <p className="mt-4 text-4xl font-semibold tracking-tight text-slate-900">
                   {stat.value}
                 </p>
-                <div className="mt-5 flex items-center justify-between gap-3">
+                <div className="print-hide mt-5 flex items-center justify-between gap-3">
                   <Link
                     href={stat.href}
                     className="text-sm font-medium text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-slate-900"
                   >
                     Open
                   </Link>
-                  <PrintButton compact />
                 </div>
               </div>
             )
           })}
         </div>
 
-        <div className="mt-8 grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
-          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="print-single-column mt-8 grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+          <section className="print-card rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
@@ -165,7 +162,7 @@ export default async function DashboardPage() {
               </div>
               <Link
                 href="/dashboard/assets"
-                className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900"
+                className="print-hide rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900"
               >
                 Open asset list
               </Link>
@@ -177,14 +174,14 @@ export default async function DashboardPage() {
               </div>
             ) : (
               <div className="mt-6 overflow-x-auto">
-                <table className="min-w-full text-sm">
+                <table className="print-table min-w-full text-sm">
                   <thead className="border-b border-slate-200 bg-slate-50">
                     <tr>
                       <th className="px-4 py-3 text-left font-medium text-slate-600">Tag</th>
                       <th className="px-4 py-3 text-left font-medium text-slate-600">Type</th>
                       <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
                       <th className="px-4 py-3 text-left font-medium text-slate-600">Updated</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-600">Actions</th>
+                      <th className="print-hide px-4 py-3 text-left font-medium text-slate-600">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -194,7 +191,7 @@ export default async function DashboardPage() {
                         <td className="px-4 py-3 text-slate-600">{asset.category ?? 'Other'}</td>
                         <td className="px-4 py-3 text-slate-600">{asset.status ?? 'UNKNOWN'}</td>
                         <td className="px-4 py-3 text-slate-600">{formatRelativeDate(asset.updated_at)}</td>
-                        <td className="px-4 py-3">
+                        <td className="print-hide px-4 py-3">
                           <div className="flex flex-wrap items-center gap-2">
                             <Link
                               href={`/assets/${asset.id}`}
@@ -224,7 +221,6 @@ export default async function DashboardPage() {
                                 </span>
                               </button>
                             )}
-                            <PrintButton compact />
                           </div>
                         </td>
                       </tr>
@@ -235,7 +231,7 @@ export default async function DashboardPage() {
             )}
           </section>
 
-          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="print-hide rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
               Current User Profile
             </p>

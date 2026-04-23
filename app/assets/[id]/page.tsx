@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { PencilLine } from 'lucide-react'
 import { AppShell } from '@/app/components/AppShell'
-import { PrintButton } from '@/app/components/PrintButton'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseUser } from '@/lib/supabase/session'
 import { DeleteAssetButton } from './DeleteAssetButton'
@@ -76,8 +75,8 @@ export default async function AssetDetailPage({ params }: Props) {
 
   return (
     <AppShell currentPath="/dashboard/assets" user={user}>
-      <section className="mx-auto max-w-4xl">
-        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <section className="print-sheet mx-auto max-w-4xl">
+        <div className="print-page-header mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <Link href="/dashboard/assets" className="text-sm font-medium text-slate-500 hover:text-slate-800">
               Back to assets
@@ -102,7 +101,6 @@ export default async function AssetDetailPage({ params }: Props) {
                 </span>
               </Link>
             )}
-            <PrintButton />
             {isAdmin && <DeleteAssetButton id={params.id} assetTag={asset.asset_tag ?? params.id} />}
           </div>
         </div>

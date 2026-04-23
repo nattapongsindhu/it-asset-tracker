@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { Boxes, Filter, PencilLine, Search, ShieldCheck, UserCircle2 } from 'lucide-react'
 import { createAsset } from '@/app/actions/assets'
 import { AppShell } from '@/app/components/AppShell'
-import { PrintButton } from '@/app/components/PrintButton'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseUser } from '@/lib/supabase/session'
 import type { AssetRecord, AssetUserOption } from '@/types/app'
@@ -176,7 +175,7 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
   return (
     <AppShell currentPath="/dashboard/assets" user={user}>
       <section className="print-sheet mx-auto max-w-6xl">
-        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="print-page-header mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
               Asset Management
@@ -192,13 +191,12 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <PrintButton label="Print List" />
+          <div className="print-hide flex flex-wrap items-center gap-3">
             {isAdmin && <AddAssetModal action={createAsset} openByDefault={openByDefault} users={users} />}
           </div>
         </div>
 
-        <div className="mb-6 grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
+        <div className="print-single-column mb-6 grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
           <form
             method="GET"
             className="print-hide rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm"
@@ -254,7 +252,7 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
             </div>
           </form>
 
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="print-hide rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-3">
               <span className="rounded-full bg-slate-900 p-2 text-white">
                 <UserCircle2 className="h-5 w-5" />
@@ -288,9 +286,6 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
                   {assets.length} asset{assets.length !== 1 ? 's' : ''} in view
                 </p>
-              </div>
-              <div className="print-hide">
-                <PrintButton compact label="Print" />
               </div>
             </div>
           </div>
@@ -360,7 +355,6 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
                               </span>
                             </button>
                           )}
-                          <PrintButton compact />
                         </div>
                       </td>
                     </tr>

@@ -1,4 +1,4 @@
-import { PencilLine, Printer } from 'lucide-react'
+import { PencilLine } from 'lucide-react'
 
 type Props = {
   className?: string
@@ -29,12 +29,6 @@ export function PlaceholderActionGroup({
           </span>
         </button>
       )}
-      <button type="button" disabled className={buttonClassName}>
-        <span className="inline-flex items-center gap-1.5">
-          <Printer className={compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
-          Print
-        </span>
-      </button>
     </div>
   )
 }
