@@ -30,6 +30,18 @@ type Props = {
   }
 }
 
+type AssetRow = {
+  asset_tag: string | null
+  assigned_user_id: string | null
+  brand: string | null
+  category: string | null
+  id: string
+  model: string | null
+  serial_number: string | null
+  status: string | null
+  warranty_expiry: string | null
+}
+
 type ProfileRow = {
   email: string | null
   id: string
@@ -59,7 +71,7 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
   const openByDefault = getSingleValue(searchParams?.new) === '1'
 
   let assets: AssetRecord[] = []
-  let types: Array<{ type: string }> = []
+  let typeOptions: string[] = []
   let users: AssetUserOption[] = []
   let loadError = ''
 
@@ -86,13 +98,11 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
       )
     }
 
-    const [
-      { data: assetRows, error: assetError },
-      { data: typeRows, error: typeError },
-    ] = await Promise.all([
-      assetQuery,
-      supabase.from('assets').select('category').order('category'),
-    ])
+    const [{ data: assetRows, error: assetError }, { data: typeRows, error: typeError }] =
+      await Promise.all([
+        assetQuery,
+        supabase.from('assets').select('category').order('category'),
+      ])
 
     if (assetError || typeError) {
       throw assetError ?? typeError
@@ -121,7 +131,7 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
       profilesById = new Map((assignedProfiles ?? []).map(profile => [profile.id, profile]))
     }
 
-    assets = (assetRows ?? []).map(row => {
+    assets = (assetRows ?? []).map((row: AssetRow) => {
       const assignedUser = row.assigned_user_id ? profilesById.get(row.assigned_user_id) : null
 
       return {
@@ -144,13 +154,13 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
       }
     })
 
-    types = Array.from(
+    typeOptions = Array.from(
       new Set(
         (typeRows ?? [])
           .map(row => row.category)
           .filter((value): value is string => typeof value === 'string' && value.length > 0)
       )
-    ).map(category => ({ type: category }))
+    )
 
     if (isAdmin) {
       const { data: profileRows, error: profileListError } = await supabase
@@ -186,13 +196,15 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
               </span>
               Asset Dashboard
             </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
+            <p className="print-hide mt-3 max-w-3xl text-sm leading-7 text-slate-600">
               Review inventory, print a clean A4 list, and keep asset records orderly from one workspace.
             </p>
           </div>
 
           <div className="print-hide flex flex-wrap items-center gap-3">
-            {isAdmin && <AddAssetModal action={createAsset} openByDefault={openByDefault} users={users} />}
+            {isAdmin && (
+              <AddAssetModal action={createAsset} openByDefault={openByDefault} users={users} />
+            )}
           </div>
         </div>
 
@@ -217,22 +229,26 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
               </label>
               <select
                 name="status"
-                defaultValue={status ?? ''}
+                defaultValue={status}
                 className="rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-900"
               >
                 <option value="">All statuses</option>
                 {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
                 ))}
               </select>
               <select
                 name="type"
-                defaultValue={type ?? ''}
+                defaultValue={type}
                 className="rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-900"
               >
                 <option value="">All types</option>
-                {types.map(option => (
-                  <option key={option.type} value={option.type}>{option.type}</option>
+                {typeOptions.map(option => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
                 ))}
               </select>
               <button
@@ -305,21 +321,32 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
                     <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
                     <th className="px-4 py-3 text-left font-medium text-slate-600">Assigned To</th>
                     <th className="px-4 py-3 text-left font-medium text-slate-600">Warranty</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600 print-hide">Actions</th>
+                    <th className="print-hide px-4 py-3 text-left font-medium text-slate-600">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {assets.map(asset => (
                     <tr key={asset.id} className="hover:bg-slate-50">
                       <td className="px-4 py-3">
-                        <Link href={`/assets/${asset.id}`} className="font-mono text-slate-900 hover:underline">
+                        <Link
+                          href={`/assets/${asset.id}`}
+                          className="font-mono text-slate-900 hover:underline"
+                        >
                           {asset.assetTag}
                         </Link>
                       </td>
                       <td className="px-4 py-3 text-slate-600">{asset.type}</td>
-                      <td className="px-4 py-3 text-slate-800">{asset.brand} {asset.model}</td>
+                      <td className="px-4 py-3 text-slate-800">
+                        {asset.brand} {asset.model}
+                      </td>
                       <td className="px-4 py-3">
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[asset.status] ?? 'bg-slate-100 text-slate-500'}`}>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                            STATUS_COLORS[asset.status] ?? 'bg-slate-100 text-slate-500'
+                          }`}
+                        >
                           {STATUS_LABELS[asset.status] ?? asset.status}
                         </span>
                       </td>
@@ -333,7 +360,7 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
                           >
                             View
                           </Link>
-                          {isAdmin ? (
+                          {isAdmin && (
                             <Link
                               href={`/assets/${asset.id}/edit`}
                               className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
