@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { AppShell } from '@/app/components/AppShell'
+import { LocalizedDateTime } from '@/app/components/LocalizedDateTime'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseAdmin } from '@/lib/supabase/session'
 import type { AuditLogRecord } from '@/types/app'
@@ -162,7 +163,7 @@ export default async function AuditLogPage() {
                 {logs.map(log => (
                   <tr key={log.id} className="hover:bg-slate-50">
                     <td className="whitespace-nowrap px-4 py-3 text-slate-500">
-                      {new Date(log.createdAt).toLocaleString()}
+                      <LocalizedDateTime includeTime showTimeZone value={log.createdAt} />
                     </td>
                     <td className="px-4 py-3 text-slate-700">
                       {log.user?.name ?? log.user?.email ?? <span className="text-slate-400">system</span>}

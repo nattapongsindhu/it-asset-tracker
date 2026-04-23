@@ -1,7 +1,9 @@
+import type { ReactNode } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Pencil } from 'lucide-react'
 import { AppShell } from '@/app/components/AppShell'
+import { LocalizedDateTime } from '@/app/components/LocalizedDateTime'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseUser } from '@/lib/supabase/session'
 import { DeleteAssetButton } from './DeleteAssetButton'
@@ -15,19 +17,13 @@ const STATUS_LABELS: Record<string, string> = {
 
 type Props = { params: { id: string } }
 
-function formatValue(value: string | null | undefined) {
-  return value && value.trim().length > 0 ? value : '-'
+type DetailRow = {
+  label: string
+  value: ReactNode
 }
 
-function formatDate(value: string | null | undefined) {
-  if (!value) {
-    return '-'
-  }
-
-  return new Intl.DateTimeFormat('en-US', {
-    dateStyle: 'medium',
-    timeStyle: value.includes('T') ? 'short' : undefined,
-  }).format(new Date(value))
+function formatValue(value: string | null | undefined) {
+  return value && value.trim().length > 0 ? value : '-'
 }
 
 export default async function AssetDetailPage({ params }: Props) {
@@ -59,7 +55,7 @@ export default async function AssetDetailPage({ params }: Props) {
     assignedUserName = assignedUser?.email ?? '-'
   }
 
-  const rows = [
+  const rows: DetailRow[] = [
     { label: 'Asset Tag', value: formatValue(asset.asset_tag) },
     { label: 'Type', value: formatValue(asset.category) },
     { label: 'Brand', value: formatValue(asset.brand) },
@@ -67,9 +63,18 @@ export default async function AssetDetailPage({ params }: Props) {
     { label: 'Serial Number', value: formatValue(asset.serial_number) },
     { label: 'Status', value: STATUS_LABELS[asset.status ?? ''] ?? asset.status ?? '-' },
     { label: 'Assigned To', value: assignedUserName },
-    { label: 'Warranty Expiry', value: formatDate(asset.warranty_expiry) },
-    { label: 'Created', value: formatDate(asset.created_at) },
-    { label: 'Last Updated', value: formatDate(asset.updated_at) },
+    {
+      label: 'Warranty Expiry',
+      value: <LocalizedDateTime value={asset.warranty_expiry} />,
+    },
+    {
+      label: 'Created',
+      value: <LocalizedDateTime includeTime showTimeZone value={asset.created_at} />,
+    },
+    {
+      label: 'Last Updated',
+      value: <LocalizedDateTime includeTime showTimeZone value={asset.updated_at} />,
+    },
     { label: 'Notes', value: formatValue(asset.notes) },
   ]
 
