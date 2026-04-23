@@ -2,23 +2,12 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { KeyRound, Mail, Sparkles } from 'lucide-react'
+import { KeyRound, Mail } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
-import { getSafeRedirectPath, getURL } from '@/lib/site-url'
+import { MagicLinkModal } from './MagicLinkModal'
 
 type Props = {
   nextPath: string
-}
-
-function getMagicLinkRedirect(nextPath: string) {
-  const callbackUrl = new URL(getURL('/auth/callback', window.location.origin))
-  const redirectPath = getSafeRedirectPath(nextPath)
-
-  if (redirectPath !== '/dashboard') {
-    callbackUrl.searchParams.set('next', redirectPath)
-  }
-
-  return callbackUrl.toString()
 }
 
 export function LoginForm({ nextPath }: Props) {
@@ -26,14 +15,12 @@ export function LoginForm({ nextPath }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [isPasswordLoading, setIsPasswordLoading] = useState(false)
 
   async function handlePasswordSignIn(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
-    setMessage('')
-    setLoading(true)
+    setIsPasswordLoading(true)
 
     try {
       const supabase = createSupabaseBrowserClient()
@@ -54,36 +41,7 @@ export function LoginForm({ nextPath }: Props) {
         caughtError instanceof Error ? caughtError.message : 'Unable to sign in right now.'
       setError(message)
     } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleMagicLink() {
-    setError('')
-    setMessage('')
-    setLoading(true)
-
-    try {
-      const supabase = createSupabaseBrowserClient()
-      const { error: magicLinkError } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: {
-          emailRedirectTo: getMagicLinkRedirect(nextPath),
-        },
-      })
-
-      if (magicLinkError) {
-        setError(magicLinkError.message)
-        return
-      }
-
-      setMessage('Magic link sent. Check your inbox to continue.')
-    } catch (caughtError) {
-      const message =
-        caughtError instanceof Error ? caughtError.message : 'Unable to send the magic link.'
-      setError(message)
-    } finally {
-      setLoading(false)
+      setIsPasswordLoading(false)
     }
   }
 
@@ -131,12 +89,6 @@ export function LoginForm({ nextPath }: Props) {
           </label>
         </div>
 
-        {message && (
-          <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            {message}
-          </p>
-        )}
-
         {error && (
           <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {error}
@@ -145,33 +97,15 @@ export function LoginForm({ nextPath }: Props) {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={isPasswordLoading}
           className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? 'Signing in...' : 'Sign in with Password'}
+          {isPasswordLoading ? 'Signing in...' : 'Sign in with Password'}
         </button>
       </form>
 
-      <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-slate-800">Prefer a magic link?</p>
-            <p className="mt-1 text-sm text-slate-500">
-              Enter your email above, then request a secure link.
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={loading || !email.trim()}
-            onClick={handleMagicLink}
-            className="rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <span className="inline-flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Send Magic Link
-            </span>
-          </button>
-        </div>
+      <div className="mt-6 border-t border-slate-200 pt-5 text-center">
+        <MagicLinkModal defaultEmail={email} nextPath={nextPath} />
       </div>
     </div>
   )
