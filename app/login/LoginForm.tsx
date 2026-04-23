@@ -4,17 +4,18 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { KeyRound, Mail, Sparkles } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
+import { getSafeRedirectPath, getURL } from '@/lib/site-url'
 
 type Props = {
   nextPath: string
 }
 
 function getMagicLinkRedirect(nextPath: string) {
-  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '')
-  const callbackUrl = new URL('/auth/callback', baseUrl)
+  const callbackUrl = new URL(getURL('/auth/callback', window.location.origin))
+  const redirectPath = getSafeRedirectPath(nextPath)
 
-  if (nextPath.startsWith('/') && nextPath !== '/dashboard') {
-    callbackUrl.searchParams.set('next', nextPath)
+  if (redirectPath !== '/dashboard') {
+    callbackUrl.searchParams.set('next', redirectPath)
   }
 
   return callbackUrl.toString()

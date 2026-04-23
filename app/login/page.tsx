@@ -2,25 +2,12 @@ import { redirect } from 'next/navigation'
 import { KeyRound, ShieldCheck } from 'lucide-react'
 import { LoginForm } from './LoginForm'
 import { getSupabaseSessionUser } from '@/lib/supabase/session'
+import { getSafeRedirectPath } from '@/lib/site-url'
 
 type Props = {
   searchParams?: {
     next?: string | string[]
   }
-}
-
-function getSingleValue(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value
-}
-
-function getSafeRedirectPath(value: string | string[] | undefined) {
-  const nextPath = getSingleValue(value)
-
-  if (nextPath && nextPath.startsWith('/') && !nextPath.startsWith('/login') && !nextPath.startsWith('/auth/')) {
-    return nextPath
-  }
-
-  return '/dashboard'
 }
 
 export default async function LoginPage({ searchParams }: Props) {

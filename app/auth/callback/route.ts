@@ -1,21 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-
-function getSafeRedirectPath(request: NextRequest) {
-  const next = request.nextUrl.searchParams.get('next')
-
-  if (next && next.startsWith('/') && !next.startsWith('/login') && !next.startsWith('/auth/')) {
-    return next
-  }
-
-  return '/dashboard'
-}
+import { getSafeRedirectPath, getURL } from '@/lib/site-url'
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code')
+  const origin = request.nextUrl.origin
 
   if (!code) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return NextResponse.redirect(new URL(getURL('/login', origin)))
   }
 
   try {
@@ -23,12 +15,12 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (error) {
-      return NextResponse.redirect(new URL('/login', request.url))
+      return NextResponse.redirect(new URL(getURL('/login', origin)))
     }
 
-    const redirectPath = getSafeRedirectPath(request)
-    return NextResponse.redirect(new URL(redirectPath, request.url))
+    const redirectPath = getSafeRedirectPath(request.nextUrl.searchParams.get('next'))
+    return NextResponse.redirect(new URL(getURL(redirectPath, origin)))
   } catch {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return NextResponse.redirect(new URL(getURL('/login', origin)))
   }
 }
