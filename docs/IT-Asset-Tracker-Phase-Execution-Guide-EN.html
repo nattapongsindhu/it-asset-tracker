@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>IT Asset Tracker - Phase Execution Guide</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 18mm;
+      }
+
+      :root {
+        --heading: #1F4E79;
+        --border: #d0d7de;
+        --muted: #666666;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Aptos", Aptos, "Segoe UI", sans-serif;
+        color: #1f2937;
+        font-size: 12pt;
+        line-height: 1.45;
+        background: #ffffff;
+      }
+
+      .cover {
+        text-align: center;
+        padding-top: 80px;
+        padding-bottom: 24px;
+      }
+
+      .cover h1 {
+        margin: 0 0 8px;
+        color: var(--heading);
+        font-size: 24pt;
+      }
+
+      .cover h2 {
+        margin: 0 0 8px;
+        font-size: 18pt;
+      }
+
+      .cover p.meta {
+        margin: 4px 0;
+        color: var(--muted);
+      }
+
+      h1, h2 {
+        color: var(--heading);
+        margin-top: 20px;
+        margin-bottom: 8px;
+      }
+
+      h1 { font-size: 18pt; }
+      h2 { font-size: 15pt; }
+
+      p {
+        margin: 0 0 10px;
+      }
+
+      ul, ol {
+        margin: 0 0 12px 22px;
+        padding: 0;
+      }
+
+      li {
+        margin: 0 0 4px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 8px 0 14px;
+        table-layout: fixed;
+      }
+
+      th, td {
+        border: 1px solid var(--border);
+        padding: 8px 10px;
+        vertical-align: top;
+        word-break: break-word;
+      }
+
+      th {
+        background: #1f4e79;
+        color: #ffffff;
+        text-align: left;
+      }
+
+      .page-break {
+        page-break-after: always;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="document">
+      <section class="cover">
+        <h1>IT Asset Tracker</h1>
+        <h2>Phase Execution Guide</h2>
+        <p class="meta">English Edition</p>
+        <p class="meta">Prepared on April 21, 2026</p>
+      </section>
+      <p>This guide is designed to control delivery from kickoff to production release. It helps the team work in defined phases, reduce avoidable mistakes, resume work cleanly after interruptions, and keep both the Lead Tech and Project Manager aligned from the beginning through completion.</p>
+<p>The guide is built around the required workflow: /spec, /plan, /build, /test, /review, and /ship.</p>
+<p>For this project, the target authentication model is Supabase Hybrid Auth: email/password plus magic link for existing users, with the staff QA password kept as staff123.</p>
+      <div class="page-break"></div>
+      
+        <section class="section">
+          <h1>1. Core Control Principles</h1>
+          <p>Every phase must answer five questions before the team moves on.</p>
+<ol><li>What phase are we in right now?</li><li>What is the objective of this phase?</li><li>What deliverables must exist before we exit this phase?</li><li>What evidence proves the phase is complete?</li><li>If work stops right now, what must the next person know to continue immediately?</li></ol>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>2. Project Artifacts That Must Stay Current</h1>
+          <ul><li>Spec / PRD: problem, scope, constraints, acceptance criteria</li><li>Implementation Plan: ordered tasks with dependencies</li><li>Decision Log: architecture and scope decisions</li><li>Risk / Blocker Log: current risks, owners, and follow-up dates</li><li>Progress Log: what is done, in progress, and waiting</li><li>Verification Log: lint, build, tests, QA, deployment checks</li><li>Handoff Note: the minimum context required when work pauses</li></ul>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>3. Phase Overview</h1>
+          
+          <table>
+            <thead>
+              <tr><th>Phase</th><th>Primary Goal</th><th>Required Deliverable</th><th>Gate Before Exit</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>/spec</td><td>Define the work clearly</td><td>Technical spec or PRD</td><td>No implementation code yet</td></tr><tr><td>/plan</td><td>Create a dependency-safe roadmap</td><td>Task plan with definitions of done</td><td>Every task has an owner and a verification method</td></tr><tr><td>/build</td><td>Implement one small slice at a time</td><td>Code and config changes for the slice</td><td>The slice stays reversible</td></tr><tr><td>/test</td><td>Prove it works</td><td>Evidence from commands and checks</td><td>No unsupported completion claims</td></tr><tr><td>/review</td><td>Audit quality and risk</td><td>Findings, fixes, residual risks</td><td>No critical issue is silently left behind</td></tr><tr><td>/ship</td><td>Release safely</td><td>Deployment checklist and rollback plan</td><td>Post-release verification is ready</td></tr>
+            </tbody>
+          </table>
+        
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>4. Pre-Phase Setup</h1>
+          <ul><li>Identify the work owner.</li><li>State whether the work is a feature, migration, or bug fix.</li><li>List key stakeholders.</li><li>Record the milestone or deadline when available.</li><li>Separate known facts from assumptions that still need validation.</li></ul>
+<p>Before Phase 1 starts, everyone should know what the work is and what is explicitly out of scope.</p>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>5. Phase Details</h1>
+          
+          
+            <section class="subsection">
+              <h2>5.1 /spec</h2>
+              <p>Goal: eliminate ambiguity before code changes begin.</p>
+<ul><li>Analyze the request and inspect the current repo.</li><li>Define current state, target state, scope, and non-scope.</li><li>State stack choices, constraints, acceptance criteria, and key risks.</li><li>Document open questions that still need answers.</li></ul>
+
+          <table>
+            <thead>
+              <tr><th>Stakeholder</th><th>What They Must See</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Lead Tech</td><td>Architecture direction, business rules, migration risk, security implications</td></tr><tr><td>Project Manager</td><td>Scope clarity, MVP boundary, timeline risk, external dependencies</td></tr>
+            </tbody>
+          </table>
+        
+<ul><li>Do not write implementation code in this phase.</li><li>Do not guess requirements without inspecting real context.</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>5.2 /plan</h2>
+              <p>Goal: convert the spec into a trackable, dependency-aware roadmap.</p>
+<ul><li>Break the work into atomic tasks.</li><li>Order tasks by dependency.</li><li>Separate risky tasks from low-risk tasks.</li><li>Define files, modules, schemas, and environments affected.</li><li>Attach a definition of done and verification method to every task.</li></ul>
+
+          <table>
+            <thead>
+              <tr><th>Stakeholder</th><th>What They Must See</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Lead Tech</td><td>Safe task order, clear technical sequencing, isolation of risky migrations</td></tr><tr><td>Project Manager</td><td>Milestones, progress checkpoints, dependency visibility</td></tr>
+            </tbody>
+          </table>
+        
+<ul><li>Do not combine multiple large themes into one task.</li><li>Do not start building while planning is still ambiguous.</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>5.3 /build</h2>
+              <p>Goal: deliver in small slices that can be verified and reversed.</p>
+<ul><li>Implement one slice at a time.</li><li>Keep the slice scope small and explicit.</li><li>Update progress after each slice.</li><li>Pause and re-plan if a new architectural risk appears.</li><li>Prefer foundation first: schema, auth, guards, env, then feature flows.</li></ul>
+
+          <table>
+            <thead>
+              <tr><th>Stakeholder</th><th>What They Must See</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Lead Tech</td><td>Implementation quality, alignment with plan, no unnecessary complexity</td></tr><tr><td>Project Manager</td><td>Completed slices, active slice, new blockers or slippage</td></tr>
+            </tbody>
+          </table>
+        
+<ul><li>Do not build multiple hard-to-verify slices in parallel.</li><li>Do not change architecture silently mid-stream.</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>5.4 /test</h2>
+              <p>Goal: replace assumptions with proof.</p>
+<ul><li>Run lint, build, and automated tests where available.</li><li>Run manual checks on critical user and admin flows.</li><li>Verify role-based access, regression risk, and deployment-sensitive paths.</li><li>Record exact commands, pass/fail states, and testing gaps.</li></ul>
+
+          <table>
+            <thead>
+              <tr><th>Stakeholder</th><th>What They Must See</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Lead Tech</td><td>Coverage of risky paths such as auth, data, security, and critical workflows</td></tr><tr><td>Project Manager</td><td>Readiness for review, open defects, remaining QA dependencies</td></tr>
+            </tbody>
+          </table>
+        
+<ul><li>Do not say the work is done without evidence.</li><li>Do not hide failures or skip critical-path manual verification.</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>5.5 /review</h2>
+              <p>Goal: audit the implementation for readability, security, maintainability, and production safety.</p>
+<ul><li>Review readability and code simplicity.</li><li>Review authorization, data protection, and security gaps.</li><li>Review maintainability, duplication, and unnecessary abstraction.</li><li>Review documentation, onboarding, and operational readiness.</li></ul>
+
+          <table>
+            <thead>
+              <tr><th>Stakeholder</th><th>What They Must See</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Lead Tech</td><td>Critical issues, code smells, maintainability concerns, readiness for release</td></tr><tr><td>Project Manager</td><td>Residual risks, approvals needed, remaining release blockers</td></tr>
+            </tbody>
+          </table>
+        
+<ul><li>Do not reduce review to formatting only.</li><li>Do not leave known security gaps undocumented.</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>5.6 /ship</h2>
+              <p>Goal: release safely with a known rollback path.</p>
+<ul><li>Check env vars, secrets, schema readiness, and deployment config.</li><li>Prepare release notes and rollback instructions.</li><li>Run pre-release and post-release verification.</li><li>Identify monitoring or logs that must be watched after release.</li></ul>
+
+          <table>
+            <thead>
+              <tr><th>Stakeholder</th><th>What They Must See</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Lead Tech</td><td>Deployment risk, rollback path, post-release monitoring plan</td></tr><tr><td>Project Manager</td><td>Release window, stakeholder communication, post-release status</td></tr>
+            </tbody>
+          </table>
+        
+<ul><li>Do not release without a rollback plan.</li><li>Do not assume a successful deploy equals a successful release.</li></ul>
+            </section>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>6. Stop-and-Resume Rules</h1>
+          <p>Whenever work stops mid-stream, leave a handoff note with at least these eight items.</p>
+<ol><li>Current Phase</li><li>Objective of the current phase</li><li>Work already completed</li><li>Work still not completed</li><li>Latest blocker or risk</li><li>Latest important decision</li><li>Evidence already collected</li><li>Immediate next step</li></ol>
+          
+            <section class="subsection">
+              <h2>6.1 Recommended Handoff Note</h2>
+              <p>Current Phase: /build. Current Slice: Hybrid auth guard update. Done: server auth helper, route guard, session role mapping, password login path. Not Done: magic-link callback verification and staff restriction check on /audit. Blocker: final decision needed on staff asset visibility scope. Latest Decision: keep Supabase Hybrid Auth as target and avoid a Prisma auth bridge. Evidence: lint passed, manual login test pending. Next Step: finish magic-link authorization checks, then run /test.</p>
+            </section>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>7. Status Reporting for Lead Tech and PM</h1>
+          <p>Use the same compact status format throughout the project to keep leadership aligned.</p>
+<ul><li>Current Phase</li><li>Completed This Period</li><li>In Progress</li><li>Next Phase Gate</li><li>Risks / Blockers</li><li>Decisions Needed</li><li>ETA to Next Milestone</li></ul>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>8. Project-Level Quality Checklist</h1>
+          <ul><li>Every phase has a clear owner.</li><li>Every phase has exit criteria.</li><li>Every phase has evidence.</li><li>Every pause in work has a handoff note.</li><li>Every important decision is logged.</li><li>Every blocker has an owner and a target follow-up date.</li><li>Every release has a rollback plan.</li></ul>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>9. Short Summary</h1>
+          <ul><li>Spec before build.</li><li>Build in small slices.</li><li>Every slice must be verified.</li><li>Review before ship.</li><li>Every interruption must leave a handoff note.</li></ul>
+<p>Following these rules keeps the project moving even when ownership changes, work pauses mid-stream, or multiple stakeholders need the same view of progress from kickoff through release.</p>
+          
+        </section>
+      
+    </main>
+  </body>
+</html>

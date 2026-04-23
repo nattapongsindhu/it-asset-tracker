@@ -1,12 +1,12 @@
 'use client'
 import { useFormState } from 'react-dom'
-import type { Asset, User } from '@prisma/client'
+import type { AssetRecord, AssetUserOption } from '@/types/app'
 
 const STATUSES = [
-  { value: 'IN_STOCK',  label: 'In Stock' },
-  { value: 'ASSIGNED',  label: 'Assigned' },
+  { value: 'IN_STOCK', label: 'In Stock' },
+  { value: 'ASSIGNED', label: 'Assigned' },
   { value: 'IN_REPAIR', label: 'In Repair' },
-  { value: 'RETIRED',   label: 'Retired' },
+  { value: 'RETIRED', label: 'Retired' },
 ]
 
 const TYPES = ['Laptop', 'Desktop', 'Monitor', 'Keyboard', 'Mouse', 'Headset', 'Phone', 'Tablet', 'Other']
@@ -15,8 +15,8 @@ type ActionState = { error?: string } | undefined
 
 type Props = {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
-  asset?: Asset
-  users: Pick<User, 'id' | 'name' | 'email'>[]
+  asset?: AssetRecord
+  users: AssetUserOption[]
 }
 
 export function AssetForm({ action, asset, users }: Props) {
@@ -43,11 +43,11 @@ export function AssetForm({ action, asset, users }: Props) {
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Select type</option>
-            {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            {TYPES.map(type => <option key={type} value={type}>{type}</option>)}
           </select>
         </div>
-        <Field label="Brand *"  name="brand"  defaultValue={asset?.brand}  required />
-        <Field label="Model *"  name="model"  defaultValue={asset?.model}  required />
+        <Field label="Brand *" name="brand" defaultValue={asset?.brand} required />
+        <Field label="Model *" name="model" defaultValue={asset?.model} required />
         <Field label="Serial Number" name="serialNumber" defaultValue={asset?.serialNumber ?? ''} />
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Status *</label>
@@ -57,7 +57,7 @@ export function AssetForm({ action, asset, users }: Props) {
             required
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            {STATUSES.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
           </select>
         </div>
         <div>
@@ -68,8 +68,8 @@ export function AssetForm({ action, asset, users }: Props) {
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Unassigned</option>
-            {users.map(u => (
-              <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+            {users.map(user => (
+              <option key={user.id} value={user.id}>{user.name} ({user.email})</option>
             ))}
           </select>
         </div>
@@ -109,7 +109,10 @@ export function AssetForm({ action, asset, users }: Props) {
 }
 
 function Field({ label, name, defaultValue, required }: {
-  label: string; name: string; defaultValue?: string | null; required?: boolean
+  label: string
+  name: string
+  defaultValue?: string | null
+  required?: boolean
 }) {
   return (
     <div>

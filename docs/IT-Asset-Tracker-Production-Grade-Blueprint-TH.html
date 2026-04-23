@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <title>IT Asset Tracker - คู่มือ Blueprint ระดับ Production-Grade</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 18mm;
+      }
+
+      :root {
+        --heading: #1F4E79;
+        --border: #d0d7de;
+        --muted: #666666;
+      }
+
+      body {
+        margin: 0;
+        font-family: "TH Sarabun New", Aptos, "Segoe UI", sans-serif;
+        color: #1f2937;
+        font-size: 14pt;
+        line-height: 1.45;
+        background: #ffffff;
+      }
+
+      .document {
+        width: 100%;
+      }
+
+      .cover {
+        text-align: center;
+        padding-top: 80px;
+        padding-bottom: 24px;
+      }
+
+      .cover h1 {
+        margin: 0 0 8px;
+        color: var(--heading);
+        font-size: 24pt;
+      }
+
+      .cover h2 {
+        margin: 0 0 8px;
+        font-size: 18pt;
+      }
+
+      .cover p.meta {
+        margin: 4px 0;
+        color: var(--muted);
+      }
+
+      h1, h2 {
+        color: var(--heading);
+        margin-top: 20px;
+        margin-bottom: 8px;
+      }
+
+      h1 {
+        font-size: 18pt;
+      }
+
+      h2 {
+        font-size: 15pt;
+      }
+
+      p {
+        margin: 0 0 10px;
+      }
+
+      ul, ol {
+        margin: 0 0 12px 22px;
+        padding: 0;
+      }
+
+      li {
+        margin: 0 0 4px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 8px 0 14px;
+        table-layout: fixed;
+      }
+
+      th, td {
+        border: 1px solid var(--border);
+        padding: 8px 10px;
+        vertical-align: top;
+        word-break: break-word;
+      }
+
+      th {
+        background: #1f4e79;
+        color: #ffffff;
+        text-align: left;
+      }
+
+      .page-break {
+        page-break-after: always;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="document">
+      <section class="cover">
+        <h1>IT Asset Tracker</h1>
+        <h2>คู่มือ Blueprint ระดับ Production-Grade</h2>
+        <p class="meta">ฉบับภาษาไทย</p>
+        <p class="meta">จัดทำเมื่อ 21 เมษายน 2569</p>
+      </section>
+      <p>เอกสารฉบับนี้กำหนด blueprint สำหรับยกระดับ repository GitHub nattapongsindhu/it-asset-tracker ให้เป็นระบบจัดการทรัพย์สิน IT ภายในองค์กรที่พร้อมใช้งานจริงบน Vercel และ Supabase</p>
+<p>เนื้อหาอ้างอิงจากสถานะจริงของ repository ที่ตรวจสอบในเครื่อง และจัดโครงสร้างตาม workflow ด้านวิศวกรรมที่ต้องทำตามอย่างเคร่งครัด ได้แก่ /spec, /plan, /build, /test, /review และ /ship</p>
+      <div class="page-break"></div>
+      
+        <section class="section">
+          <h1>1. สถานะปัจจุบันของระบบ</h1>
+          <p>repository ปัจจุบันเป็น internal tool ที่ใช้งานได้จริงอยู่แล้ว ดังนั้นแนวทางที่ถูกต้องคือ migration และ hardening อย่างเป็นระบบ ไม่ใช่การเขียนใหม่ทั้งระบบแบบไม่มีการควบคุมความเสี่ยง</p>
+
+          <table>
+            <thead>
+              <tr><th>หัวข้อ</th><th>สถานะปัจจุบัน</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Framework</td><td>Next.js 14 App Router</td></tr><tr><td>ภาษา</td><td>TypeScript 5</td></tr><tr><td>Styling</td><td>Tailwind CSS 3</td></tr><tr><td>Data Layer</td><td>Prisma 5 ร่วมกับ SQLite</td></tr><tr><td>Authentication</td><td>NextAuth v4 แบบ Credentials</td></tr><tr><td>Validation</td><td>Zod</td></tr>
+            </tbody>
+          </table>
+        
+          
+            <section class="subsection">
+              <h2>1.1 Route ที่มีอยู่ในระบบ</h2>
+              <ul><li>/login</li><li>/dashboard</li><li>/assets</li><li>/assets/new</li><li>/assets/[id]</li><li>/assets/[id]/edit</li><li>/audit</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>1.2 กฎธุรกิจที่ยืนยันแล้วจากโค้ดปัจจุบัน</h2>
+              <ul><li>ระบบมี 2 บทบาท คือ ADMIN และ STAFF</li><li>สถานะของทรัพย์สินคือ IN_STOCK, ASSIGNED, IN_REPAIR และ RETIRED</li><li>Staff ไม่มีสิทธิ์สร้าง แก้ไข หรือลบ asset</li><li>หน้า Audit Log เป็นสิทธิ์ของ Admin เท่านั้น</li><li>ทุก mutation สำคัญมีการตรวจสิทธิ์ฝั่ง server ก่อนเขียนฐานข้อมูล</li><li>หมายเหตุของ asset แสดงผลเป็น plain text เพื่อลดความเสี่ยง XSS</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>1.3 ข้อจำกัดของระบบปัจจุบัน</h2>
+              <ul><li>ประวัติการมอบหมาย asset ยังถูกเก็บแบบแบนใน assignedUserId ของ asset</li><li>งานซ่อมบำรุงยังถูกแทนด้วย status และ notes เป็นหลัก</li><li>ยังไม่มีระบบจัดเก็บไฟล์สำหรับใบเสร็จ ใบรับประกัน หรือรูปภาพอุปกรณ์</li><li>SQLite และ local credentials auth ยังไม่เหมาะเป็น backbone ของ production บน Vercel</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>1.4 บัญชีสำหรับ demo และการทดสอบ</h2>
+              
+          <table>
+            <thead>
+              <tr><th>บทบาท</th><th>credential ปัจจุบันจาก seed</th><th>credential ที่ต้องใช้ใน blueprint production</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Admin</td><td>admin@company.com / admin123</td><td>admin@company.com / admin123</td></tr><tr><td>Staff</td><td>staff@company.com / staff123</td><td>staff@company.com / staff123</td></tr>
+            </tbody>
+          </table>
+        
+            </section>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>2. เป้าหมายของ production version</h1>
+          <ul><li>deploy ระบบบน Vercel</li><li>ใช้ Supabase Hybrid Auth สำหรับทั้ง Email + Password และ Magic Link</li><li>เปิดใช้ Magic Link เฉพาะกับผู้ใช้ที่มีบัญชีอยู่แล้ว และไม่เปิด public signup</li><li>ใช้ Supabase Postgres เป็นฐานข้อมูลหลัก</li><li>ใช้ Supabase Storage สำหรับไฟล์ของ asset</li><li>คง RBAC และ auditability ให้เป็นข้อกำหนดหลัก</li><li>รักษาพฤติกรรมทางธุรกิจเดิมที่ถูกต้อง พร้อมยกระดับความพร้อมใช้งานจริง</li></ul>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>3. สถาปัตยกรรมเป้าหมาย</h1>
+          
+          <table>
+            <thead>
+              <tr><th>Layer</th><th>ทางเลือกสำหรับ production</th><th>เหตุผล</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Frontend</td><td>Next.js App Router</td><td>รักษาแนวทางเดิมของแอปและเหมาะกับ Vercel</td></tr><tr><td>Hosting</td><td>Vercel</td><td>deploy ง่าย มี preview environment และเหมาะกับ Next.js</td></tr><tr><td>Authentication</td><td>Supabase Auth</td><td>ลดความซับซ้อนของ auth และเชื่อมกับ data platform ได้ตรงกว่า</td></tr><tr><td>Database</td><td>Supabase Postgres</td><td>เหมาะกับข้อมูลเชิงสัมพันธ์ของ asset, assignment และ audit log</td></tr><tr><td>Storage</td><td>Supabase Storage</td><td>รองรับไฟล์ใบเสร็จ ใบรับประกัน และภาพอุปกรณ์</td></tr><tr><td>Security</td><td>Supabase RLS + server checks</td><td>ป้องกันข้อมูลทั้งที่ชั้นฐานข้อมูลและชั้นแอปพลิเคชัน</td></tr>
+            </tbody>
+          </table>
+        
+<p>หลักการ migration ที่แนะนำคือค่อย ๆ เปลี่ยนไปสู่ stack ที่เรียบง่ายกว่าใน production โดยลดบทบาทของ Prisma + SQLite + NextAuth ออกจากเส้นทาง production สุดท้าย เว้นแต่จะมีเหตุผลชัดเจนใน /spec ว่าต้องมี bridge ชั่วคราว</p>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>4. โครงสร้างข้อมูลที่แนะนำ</h1>
+          <p>schema สำหรับ production ควรขยายจากของเดิมเพื่อเก็บประวัติ รองรับการอัปโหลดไฟล์ และทำให้ audit มีคุณภาพมากขึ้น</p>
+          
+            <section class="subsection">
+              <h2>4.1 profiles</h2>
+              
+          <table>
+            <thead>
+              <tr><th>คอลัมน์</th><th>ชนิดข้อมูล</th><th>วัตถุประสงค์</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>id</td><td>uuid</td><td>primary key ที่ผูกกับ auth.users.id</td></tr><tr><td>email</td><td>text</td><td>อีเมลที่ไม่ซ้ำกัน</td></tr><tr><td>full_name</td><td>text</td><td>ชื่อสำหรับแสดงผล</td></tr><tr><td>role</td><td>text</td><td>ADMIN หรือ STAFF</td></tr><tr><td>department</td><td>text nullable</td><td>ข้อมูลหน่วยงานถ้ามี</td></tr><tr><td>created_at</td><td>timestamptz</td><td>เวลาที่สร้างข้อมูล</td></tr>
+            </tbody>
+          </table>
+        
+            </section>
+          
+
+            <section class="subsection">
+              <h2>4.2 assets</h2>
+              
+          <table>
+            <thead>
+              <tr><th>คอลัมน์</th><th>ชนิดข้อมูล</th><th>วัตถุประสงค์</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>id</td><td>uuid</td><td>primary key</td></tr><tr><td>asset_tag</td><td>text</td><td>รหัสทรัพย์สินที่ไม่ซ้ำ</td></tr><tr><td>category</td><td>text</td><td>เช่น laptop, monitor, keyboard, accessory</td></tr><tr><td>brand / model</td><td>text</td><td>ข้อมูลหลักของอุปกรณ์</td></tr><tr><td>serial_number</td><td>text nullable</td><td>หมายเลข serial ถ้ามี</td></tr><tr><td>status</td><td>text</td><td>IN_STOCK, ASSIGNED, IN_REPAIR, RETIRED</td></tr><tr><td>condition</td><td>text</td><td>NEW, GOOD, FAIR, DAMAGED</td></tr><tr><td>purchase_date / purchase_cost</td><td>date / numeric nullable</td><td>ข้อมูลด้านการจัดซื้อ</td></tr><tr><td>vendor / location</td><td>text nullable</td><td>ข้อมูลการปฏิบัติงาน</td></tr><tr><td>warranty_expiry</td><td>date nullable</td><td>วันหมดประกัน</td></tr><tr><td>notes</td><td>text nullable</td><td>หมายเหตุแบบ plain text</td></tr><tr><td>created_by / created_at / updated_at</td><td>uuid + timestamptz</td><td>เจ้าของข้อมูลและเวลา</td></tr>
+            </tbody>
+          </table>
+        
+            </section>
+          
+
+            <section class="subsection">
+              <h2>4.3 asset_assignments</h2>
+              
+          <table>
+            <thead>
+              <tr><th>คอลัมน์</th><th>ชนิดข้อมูล</th><th>วัตถุประสงค์</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>id</td><td>uuid</td><td>primary key</td></tr><tr><td>asset_id</td><td>uuid</td><td>อ้างอิง assets.id</td></tr><tr><td>user_id</td><td>uuid</td><td>อ้างอิง profiles.id</td></tr><tr><td>assigned_at</td><td>timestamptz</td><td>เวลามอบหมาย</td></tr><tr><td>returned_at</td><td>timestamptz nullable</td><td>เวลาคืนอุปกรณ์</td></tr><tr><td>assigned_by</td><td>uuid</td><td>ผู้ดำเนินการมอบหมาย</td></tr><tr><td>note</td><td>text nullable</td><td>หมายเหตุการมอบหมาย</td></tr>
+            </tbody>
+          </table>
+        
+            </section>
+          
+
+            <section class="subsection">
+              <h2>4.4 maintenance_logs</h2>
+              
+          <table>
+            <thead>
+              <tr><th>คอลัมน์</th><th>ชนิดข้อมูล</th><th>วัตถุประสงค์</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>id</td><td>uuid</td><td>primary key</td></tr><tr><td>asset_id</td><td>uuid</td><td>อ้างอิง assets.id</td></tr><tr><td>issue</td><td>text</td><td>รายละเอียดปัญหา</td></tr><tr><td>status</td><td>text</td><td>OPEN, IN_PROGRESS, RESOLVED</td></tr><tr><td>vendor / cost</td><td>text / numeric nullable</td><td>ข้อมูลการซ่อม</td></tr><tr><td>opened_at / resolved_at</td><td>timestamptz</td><td>ช่วงเวลาของงานซ่อม</td></tr><tr><td>note</td><td>text nullable</td><td>หมายเหตุการซ่อม</td></tr><tr><td>created_by</td><td>uuid</td><td>ผู้เปิดรายการซ่อม</td></tr>
+            </tbody>
+          </table>
+        
+            </section>
+          
+
+            <section class="subsection">
+              <h2>4.5 asset_files และ audit_logs</h2>
+              
+          <table>
+            <thead>
+              <tr><th>ตาราง</th><th>field สำคัญ</th><th>วัตถุประสงค์</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>asset_files</td><td>asset_id, file_name, file_path, file_type, uploaded_by, created_at</td><td>เก็บ metadata ของไฟล์ที่อยู่ใน Supabase Storage</td></tr><tr><td>audit_logs</td><td>actor_id, action, entity_type, entity_id, detail jsonb, created_at</td><td>เก็บเหตุการณ์สำคัญของระบบแบบมีโครงสร้าง</td></tr>
+            </tbody>
+          </table>
+        
+            </section>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>5. นโยบายความปลอดภัยและสิทธิ์การเข้าถึง</h1>
+          <ul><li>เปิดใช้ Row Level Security กับทุกตารางธุรกิจหลัก</li><li>การซ่อนปุ่มหรือเมนูใน UI ถือเป็นเพียง convenience ไม่ใช่ authorization</li><li>service-role key ต้องอยู่ฝั่ง server เท่านั้น</li><li>ทุกการเขียนข้อมูลต้องมี validation ฝั่ง server แม้จะมี RLS อยู่แล้ว</li><li>audit logging ต้องถูกควบคุมจากฝั่ง server และเป็นข้อบังคับสำหรับเหตุการณ์สำคัญ</li></ul>
+          
+            <section class="subsection">
+              <h2>5.1 สิทธิ์ของ Admin</h2>
+              <ul><li>อ่านและจัดการ asset, assignment, maintenance, file และ audit log ได้ทั้งหมด</li><li>สร้าง แก้ไข คืน ปลดระวาง และลบข้อมูลในกรณีที่ระบบอนุญาตอย่างชัดเจน</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>5.2 สิทธิ์ของ Staff</h2>
+              <ul><li>อ่านข้อมูล profile ของตนเอง</li><li>อ่าน asset ที่ถูกมอบหมายให้ตนเอง และ scope เพิ่มเติมที่ระบุไว้ชัดเจนใน product spec</li><li>ไม่มีสิทธิ์ดู audit log รวมของระบบ และไม่มีสิทธิ์ทำ mutation ฝั่ง admin</li></ul>
+            </section>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>6. สัญญาการทำงานตาม workflow</h1>
+          
+          <table>
+            <thead>
+              <tr><th>Phase</th><th>เป้าหมาย</th><th>กฎที่ห้ามข้าม</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>/spec</td><td>นิยาม technical specification</td><td>Spec ต้องมาก่อน code และห้ามเริ่ม implementation</td></tr><tr><td>/plan</td><td>แตกงานเป็น task ที่พึ่งพากันอย่างถูกลำดับ</td><td>ทุก task ต้องมี definition of done</td></tr><tr><td>/build</td><td>พัฒนาเป็น slice เล็กทีละส่วน</td><td>ต้อง verify แต่ละ slice ก่อนขึ้นงานถัดไป</td></tr><tr><td>/test</td><td>พิสูจน์ว่างานใช้ได้จริง</td><td>ต้องมีคำสั่งที่รันและหลักฐานจริง</td></tr><tr><td>/review</td><td>ตรวจคุณภาพด้าน readability, security, performance</td><td>ต้อง flag code smell และ over-engineering</td></tr><tr><td>/ship</td><td>เตรียม rollout ขึ้น production</td><td>ต้องมี rollback plan เสมอ</td></tr>
+            </tbody>
+          </table>
+        
+          
+            <section class="subsection">
+              <h2>6.1 ลำดับ build slice ที่แนะนำ</h2>
+              <ol><li>ตั้งค่า Supabase project, SQL schema และ RLS policy</li><li>ย้าย auth และ route protection</li><li>ย้ายเส้นทางอ่านข้อมูล asset, dashboard และ core CRUD</li><li>เพิ่มประวัติการมอบหมายผ่าน asset_assignments</li><li>เพิ่ม maintenance workflow</li><li>เพิ่ม file upload บน storage</li><li>ปรับปรุง audit และเอกสารประกอบ</li></ol>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>6.2 Definition of Done ของแต่ละ phase</h2>
+              <ul><li>/spec เสร็จเมื่อ current state, target state, migration risk และ scope ถูกนิยามชัดเจน</li><li>/plan เสร็จเมื่อ task มีขนาดเล็ก เรียงตาม dependency และมี verification กำกับ</li><li>/build เสร็จเป็นราย slice ได้ต่อเมื่อพิสูจน์แล้วว่า slice นั้นทำงานจริง</li><li>/test เสร็จเมื่อ proof แทนที่ assumption</li><li>/review เสร็จเมื่อความเสี่ยงสำคัญถูกแก้หรือถูกบันทึกอย่างตรงไปตรงมา</li><li>/ship เสร็จเมื่อ deployment และ rollback ปลอดภัยในเชิงปฏิบัติการ</li></ul>
+            </section>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>7. การทดสอบและความพร้อมสำหรับการปล่อยระบบ</h1>
+          
+          <table>
+            <thead>
+              <tr><th>พื้นที่ตรวจสอบ</th><th>หลักฐานที่ต้องมี</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Lint</td><td>npm run lint ผ่าน</td></tr><tr><td>Build</td><td>npm run build ผ่าน</td></tr><tr><td>Auth</td><td>Admin และ Staff เข้าสู่ระบบได้</td></tr><tr><td>RBAC</td><td>Staff ถูกบล็อกจาก action และ route ของ admin</td></tr><tr><td>Assets</td><td>สร้าง แก้ไข ดู และค้นหาได้ถูกต้อง</td></tr><tr><td>Assignments</td><td>การมอบหมายและคืน asset ถูกต้อง</td></tr><tr><td>Maintenance</td><td>การเปิดและปิดงานซ่อมถูกต้อง</td></tr><tr><td>Storage</td><td>อัปโหลดไฟล์และการจำกัดสิทธิ์ทำงานถูกต้อง</td></tr><tr><td>Audit</td><td>mutation สำคัญสร้าง audit record ได้</td></tr><tr><td>RLS</td><td>การเข้าถึงที่ไม่ได้รับอนุญาตถูกปฏิเสธ</td></tr>
+            </tbody>
+          </table>
+        
+          
+            <section class="subsection">
+              <h2>7.1 Manual critical path ที่ต้องตรวจ</h2>
+              <ul><li>เข้าสู่ระบบเป็น admin ด้วย admin@company.com / admin123</li><li>เข้าสู่ระบบเป็น staff ด้วย staff@company.com / staff123</li><li>ทดสอบขอและใช้งาน Magic Link สำหรับผู้ใช้ที่มีสิทธิ์อยู่แล้ว</li><li>ยืนยันว่า admin เข้า /audit ได้</li><li>ยืนยันว่า staff เข้า /audit หรือทำ action แบบ admin ไม่ได้</li><li>สร้างและแก้ไข asset ด้วยบัญชี admin</li><li>มอบหมาย asset ให้ staff และตรวจ scope การมองเห็น</li><li>อัปโหลดไฟล์ให้ asset</li><li>เปิด maintenance record และปิดงานซ่อม</li><li>ตรวจว่ามี audit log สำหรับเหตุการณ์สำคัญ</li></ul>
+            </section>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>8. Environment blueprint และขอบเขต MVP</h1>
+          
+          <table>
+            <thead>
+              <tr><th>ตัวแปร</th><th>หน้าที่</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>NEXT_PUBLIC_SUPABASE_URL</td><td>URL ของ Supabase project</td></tr><tr><td>NEXT_PUBLIC_SUPABASE_ANON_KEY</td><td>anonymous key ที่ใช้ได้ฝั่ง browser</td></tr><tr><td>SUPABASE_SERVICE_ROLE_KEY</td><td>key สำหรับงานฝั่ง server เท่านั้น</td></tr><tr><td>NEXT_PUBLIC_SITE_URL</td><td>URL หลักของแอป</td></tr><tr><td>DATABASE_URL</td><td>การเข้าถึง Postgres โดยตรงสำหรับ migration tooling ถ้าจำเป็น</td></tr>
+            </tbody>
+          </table>
+        
+          
+            <section class="subsection">
+              <h2>8.1 สิ่งที่ต้องอยู่ใน MVP</h2>
+              <ul><li>ระบบ login และ route protection</li><li>บทบาท Admin และ Staff</li><li>dashboard overview</li><li>asset list, detail, create และ edit</li><li>assignment history</li><li>maintenance log</li><li>audit logging</li><li>file upload support</li><li>เอกสาร deployment บน Vercel</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>8.2 สิ่งที่ตัดออกจาก MVP อย่างชัดเจน</h2>
+              <ul><li>barcode หรือ QR scanning</li><li>multi-tenant architecture</li><li>workflow approvals</li><li>real-time subscriptions</li><li>AI assistant features</li><li>analytics dashboard ที่ซับซ้อนเกินจำเป็น</li></ul>
+            </section>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>9. Definition of Done ของโปรเจกต์และขั้นตอนถัดไป</h1>
+          <ul><li>deploy บน Vercel ได้จริง</li><li>Supabase Hybrid Auth ใช้งานได้จริง</li><li>Supabase Postgres schema และ RLS policy ถูกใช้งานแล้ว</li><li>Admin login ใช้ admin@company.com / admin123 ได้</li><li>Staff login ใช้ staff@company.com / staff123 ได้</li><li>ทั้ง Password และ Magic Link ใช้งานได้สำหรับผู้ใช้ที่ได้รับอนุญาต</li><li>Staff ถูกบล็อกจากพฤติกรรมแบบ admin</li><li>workflow ของ asset, maintenance, file และ audit ถูก verify แล้ว</li><li>เอกสาร setup และ deployment เป็นปัจจุบัน</li><li>มีหลักฐานจาก /test และผลจาก /review ครบ</li></ul>
+<p>หาก /test และ /review ยังไม่ครบ สถานะที่ถูกต้องคือ NOT READY</p>
+<ol><li>ล็อก scope ของ production ด้วย /spec ให้ชัดเจน</li><li>ตัดสินใจว่าจะถอด Prisma ทันที หรือใช้ bridge ชั่วคราว</li><li>เริ่มจาก Supabase SQL schema และ RLS policy ก่อน</li><li>แทนที่ NextAuth ด้วย Supabase Auth และทำ route protection ใหม่</li><li>คง seed และ QA credential ให้ staff ใช้ staff123</li><li>ย้ายประวัติการมอบหมายไปที่ asset_assignments</li><li>ทำ /test, /review และ /ship ให้ครบก่อนประกาศว่างาน migration เสร็จ</li></ol>
+          
+        </section>
+      
+    </main>
+  </body>
+</html>

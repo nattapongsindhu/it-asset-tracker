@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>IT Asset Tracker - Production-Grade Blueprint</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 18mm;
+      }
+
+      :root {
+        --heading: #1F4E79;
+        --border: #d0d7de;
+        --muted: #666666;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Aptos", Aptos, "Segoe UI", sans-serif;
+        color: #1f2937;
+        font-size: 12pt;
+        line-height: 1.45;
+        background: #ffffff;
+      }
+
+      .document {
+        width: 100%;
+      }
+
+      .cover {
+        text-align: center;
+        padding-top: 80px;
+        padding-bottom: 24px;
+      }
+
+      .cover h1 {
+        margin: 0 0 8px;
+        color: var(--heading);
+        font-size: 24pt;
+      }
+
+      .cover h2 {
+        margin: 0 0 8px;
+        font-size: 18pt;
+      }
+
+      .cover p.meta {
+        margin: 4px 0;
+        color: var(--muted);
+      }
+
+      h1, h2 {
+        color: var(--heading);
+        margin-top: 20px;
+        margin-bottom: 8px;
+      }
+
+      h1 {
+        font-size: 18pt;
+      }
+
+      h2 {
+        font-size: 15pt;
+      }
+
+      p {
+        margin: 0 0 10px;
+      }
+
+      ul, ol {
+        margin: 0 0 12px 22px;
+        padding: 0;
+      }
+
+      li {
+        margin: 0 0 4px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 8px 0 14px;
+        table-layout: fixed;
+      }
+
+      th, td {
+        border: 1px solid var(--border);
+        padding: 8px 10px;
+        vertical-align: top;
+        word-break: break-word;
+      }
+
+      th {
+        background: #1f4e79;
+        color: #ffffff;
+        text-align: left;
+      }
+
+      .page-break {
+        page-break-after: always;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="document">
+      <section class="cover">
+        <h1>IT Asset Tracker</h1>
+        <h2>Production-Grade Blueprint</h2>
+        <p class="meta">English Edition</p>
+        <p class="meta">Prepared on April 21, 2026</p>
+      </section>
+      <p>This document defines the production-grade blueprint for evolving the existing GitHub repository nattapongsindhu/it-asset-tracker into a secure, maintainable, and deployment-ready internal asset management application on Vercel and Supabase.</p>
+<p>The blueprint is grounded in the current repository state inspected locally and organized around the required engineering workflow: /spec, /plan, /build, /test, /review, and /ship.</p>
+      <div class="page-break"></div>
+      
+        <section class="section">
+          <h1>1. Current-State Baseline</h1>
+          <p>The current repository is already a working internal tool. It should be treated as a migration and hardening project, not a greenfield rewrite.</p>
+
+          <table>
+            <thead>
+              <tr><th>Area</th><th>Current State</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Framework</td><td>Next.js 14 App Router</td></tr><tr><td>Language</td><td>TypeScript 5</td></tr><tr><td>Styling</td><td>Tailwind CSS 3</td></tr><tr><td>Data Layer</td><td>Prisma 5 with SQLite</td></tr><tr><td>Authentication</td><td>NextAuth v4 Credentials</td></tr><tr><td>Validation</td><td>Zod</td></tr>
+            </tbody>
+          </table>
+        
+          
+            <section class="subsection">
+              <h2>1.1 Confirmed Routes</h2>
+              <ul><li>/login</li><li>/dashboard</li><li>/assets</li><li>/assets/new</li><li>/assets/[id]</li><li>/assets/[id]/edit</li><li>/audit</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>1.2 Confirmed Business Rules</h2>
+              <ul><li>Roles are ADMIN and STAFF.</li><li>Asset statuses are IN_STOCK, ASSIGNED, IN_REPAIR, and RETIRED.</li><li>Staff cannot create, edit, or delete assets.</li><li>Audit Log is admin-only.</li><li>Mutations are re-checked server-side before database writes.</li><li>Notes are rendered as plain text to avoid XSS risk.</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>1.3 Current Limitations</h2>
+              <ul><li>Assignment history is flattened into the asset record through assignedUserId.</li><li>Maintenance work is represented only through status and free-form notes.</li><li>There is no storage-backed file system for receipts, warranties, or photos.</li><li>SQLite and local credentials auth are not the right production backbone for a Vercel-hosted deployment.</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>1.4 Demo Accounts</h2>
+              
+          <table>
+            <thead>
+              <tr><th>Role</th><th>Current Seed Credential</th><th>Required Production-Grade QA Credential</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Admin</td><td>admin@company.com / admin123</td><td>admin@company.com / admin123</td></tr><tr><td>Staff</td><td>staff@company.com / staff123</td><td>staff@company.com / staff123</td></tr>
+            </tbody>
+          </table>
+        
+            </section>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>2. Production Objective</h1>
+          <ul><li>Deploy the application on Vercel.</li><li>Use Supabase Hybrid Auth for email/password and magic link sign-in.</li><li>Allow magic-link access only for existing users; do not open public signup.</li><li>Use Supabase Postgres as the primary database.</li><li>Use Supabase Storage for asset files.</li><li>Keep role-based access control and auditability as first-class requirements.</li><li>Preserve working business behavior while making the system production-ready.</li></ul>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>3. Target Architecture</h1>
+          
+          <table>
+            <thead>
+              <tr><th>Layer</th><th>Production Choice</th><th>Reason</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Frontend</td><td>Next.js App Router</td><td>Keeps the current rendering model and works naturally on Vercel.</td></tr><tr><td>Hosting</td><td>Vercel</td><td>Simple deployment, preview environments, and strong Next.js fit.</td></tr><tr><td>Authentication</td><td>Supabase Auth (Hybrid)</td><td>Supports both email/password and magic link sign-in while aligning identity with the data platform.</td></tr><tr><td>Database</td><td>Supabase Postgres</td><td>Production-grade relational storage for assets, assignments, and logs.</td></tr><tr><td>Storage</td><td>Supabase Storage</td><td>Supports receipts, warranty files, and asset photos.</td></tr><tr><td>Security</td><td>Supabase RLS + server checks</td><td>Protects data at both database and application layers.</td></tr>
+            </tbody>
+          </table>
+        
+<p>Preferred migration principle: move toward a simpler production stack by replacing Prisma + SQLite + NextAuth in the final production path unless a short-lived bridge is explicitly justified in /spec.</p>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>4. Proposed Data Blueprint</h1>
+          <p>The production schema should expand the current data model to preserve history, support uploads, and improve audit quality.</p>
+          
+            <section class="subsection">
+              <h2>4.1 profiles</h2>
+              
+          <table>
+            <thead>
+              <tr><th>Column</th><th>Type</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>id</td><td>uuid</td><td>Primary key mapped to auth.users.id</td></tr><tr><td>email</td><td>text</td><td>Unique email address</td></tr><tr><td>full_name</td><td>text</td><td>Display name</td></tr><tr><td>role</td><td>text</td><td>ADMIN or STAFF</td></tr><tr><td>department</td><td>text nullable</td><td>Optional organizational grouping</td></tr><tr><td>created_at</td><td>timestamptz</td><td>Creation timestamp</td></tr>
+            </tbody>
+          </table>
+        
+            </section>
+          
+
+            <section class="subsection">
+              <h2>4.2 assets</h2>
+              
+          <table>
+            <thead>
+              <tr><th>Column</th><th>Type</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>id</td><td>uuid</td><td>Primary key</td></tr><tr><td>asset_tag</td><td>text</td><td>Unique asset identifier</td></tr><tr><td>category</td><td>text</td><td>Laptop, monitor, keyboard, accessory, and similar</td></tr><tr><td>brand / model</td><td>text</td><td>Core asset metadata</td></tr><tr><td>serial_number</td><td>text nullable</td><td>Optional serial reference</td></tr><tr><td>status</td><td>text</td><td>IN_STOCK, ASSIGNED, IN_REPAIR, RETIRED</td></tr><tr><td>condition</td><td>text</td><td>NEW, GOOD, FAIR, DAMAGED</td></tr><tr><td>purchase_date / purchase_cost</td><td>date / numeric nullable</td><td>Commercial metadata</td></tr><tr><td>vendor / location</td><td>text nullable</td><td>Operational metadata</td></tr><tr><td>warranty_expiry</td><td>date nullable</td><td>Warranty tracking</td></tr><tr><td>notes</td><td>text nullable</td><td>Plain text notes</td></tr><tr><td>created_by / created_at / updated_at</td><td>uuid + timestamptz</td><td>Ownership and timestamps</td></tr>
+            </tbody>
+          </table>
+        
+            </section>
+          
+
+            <section class="subsection">
+              <h2>4.3 asset_assignments</h2>
+              
+          <table>
+            <thead>
+              <tr><th>Column</th><th>Type</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>id</td><td>uuid</td><td>Primary key</td></tr><tr><td>asset_id</td><td>uuid</td><td>References assets.id</td></tr><tr><td>user_id</td><td>uuid</td><td>References profiles.id</td></tr><tr><td>assigned_at</td><td>timestamptz</td><td>Assignment timestamp</td></tr><tr><td>returned_at</td><td>timestamptz nullable</td><td>Return timestamp</td></tr><tr><td>assigned_by</td><td>uuid</td><td>Actor who performed the assignment</td></tr><tr><td>note</td><td>text nullable</td><td>Optional assignment note</td></tr>
+            </tbody>
+          </table>
+        
+            </section>
+          
+
+            <section class="subsection">
+              <h2>4.4 maintenance_logs</h2>
+              
+          <table>
+            <thead>
+              <tr><th>Column</th><th>Type</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>id</td><td>uuid</td><td>Primary key</td></tr><tr><td>asset_id</td><td>uuid</td><td>References assets.id</td></tr><tr><td>issue</td><td>text</td><td>Problem description</td></tr><tr><td>status</td><td>text</td><td>OPEN, IN_PROGRESS, RESOLVED</td></tr><tr><td>vendor / cost</td><td>text / numeric nullable</td><td>Repair details</td></tr><tr><td>opened_at / resolved_at</td><td>timestamptz</td><td>Lifecycle timestamps</td></tr><tr><td>note</td><td>text nullable</td><td>Repair note</td></tr><tr><td>created_by</td><td>uuid</td><td>Actor who opened the record</td></tr>
+            </tbody>
+          </table>
+        
+            </section>
+          
+
+            <section class="subsection">
+              <h2>4.5 asset_files and audit_logs</h2>
+              
+          <table>
+            <thead>
+              <tr><th>Table</th><th>Required Fields</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>asset_files</td><td>asset_id, file_name, file_path, file_type, uploaded_by, created_at</td><td>Tracks documents and media stored in Supabase Storage</td></tr><tr><td>audit_logs</td><td>actor_id, action, entity_type, entity_id, detail jsonb, created_at</td><td>Captures important system actions with structured detail</td></tr>
+            </tbody>
+          </table>
+        
+            </section>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>5. Security and Access Policy</h1>
+          <ul><li>Enable Row Level Security on every core business table.</li><li>Treat UI hiding as convenience only, never as authorization.</li><li>Keep service-role keys server-only.</li><li>Validate all writes on the server even when RLS is present.</li><li>Keep audit logging server-controlled and non-optional for critical events.</li></ul>
+          
+            <section class="subsection">
+              <h2>5.1 Admin Access</h2>
+              <ul><li>Read and manage all assets, assignments, maintenance records, files, and audit logs.</li><li>Create, update, return, retire, and delete records where deletion is explicitly allowed.</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>5.2 Staff Access</h2>
+              <ul><li>Read their own profile.</li><li>Read their assigned assets and any additional scope explicitly approved in the product spec.</li><li>Never access global audit logs or admin-only mutations.</li></ul>
+            </section>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>6. Delivery Workflow Contract</h1>
+          
+          <table>
+            <thead>
+              <tr><th>Phase</th><th>Goal</th><th>Strict Rule</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>/spec</td><td>Define the technical specification</td><td>Spec before code. No implementation yet.</td></tr><tr><td>/plan</td><td>Break the work into dependency-safe tasks</td><td>Each task must have a definition of done.</td></tr><tr><td>/build</td><td>Implement one slice at a time</td><td>Verify each slice before the next one.</td></tr><tr><td>/test</td><td>Prove the implementation works</td><td>Show commands, evidence, and failures honestly.</td></tr><tr><td>/review</td><td>Audit for readability, security, and performance</td><td>Flag code smells and over-engineering.</td></tr><tr><td>/ship</td><td>Prepare for production rollout</td><td>Always include a rollback plan.</td></tr>
+            </tbody>
+          </table>
+        
+          
+            <section class="subsection">
+              <h2>6.1 Required Build Slices</h2>
+              <ol><li>Supabase project setup, SQL schema, and RLS policies</li><li>Auth migration and route protection</li><li>Asset read paths, dashboard, and core CRUD</li><li>Assignment history implementation</li><li>Maintenance workflows</li><li>Storage-backed file uploads</li><li>Audit hardening and documentation</li></ol>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>6.2 Definition of Done by Phase</h2>
+              <ul><li>/spec is done when current state, target state, migration risks, and scope are explicit.</li><li>/plan is done when tasks are atomic, ordered by dependency, and paired with verification.</li><li>/build is done per slice only after the slice is proven to work.</li><li>/test is done only when proof replaces assumptions.</li><li>/review is done only when risks are either fixed or clearly documented.</li><li>/ship is done only when deployment and rollback are operationally safe.</li></ul>
+            </section>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>7. Verification and Ship Readiness</h1>
+          
+          <table>
+            <thead>
+              <tr><th>Area</th><th>Required Evidence</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Lint</td><td>npm run lint passes</td></tr><tr><td>Build</td><td>npm run build passes</td></tr><tr><td>Auth</td><td>Admin and staff can sign in</td></tr><tr><td>RBAC</td><td>Staff is blocked from admin-only actions and routes</td></tr><tr><td>Assets</td><td>Create, edit, view, and search work correctly</td></tr><tr><td>Assignments</td><td>Assign and return flows behave correctly</td></tr><tr><td>Maintenance</td><td>Open and resolve flows behave correctly</td></tr><tr><td>Storage</td><td>Uploads and access restrictions behave correctly</td></tr><tr><td>Audit</td><td>Critical mutations create audit records</td></tr><tr><td>RLS</td><td>Unauthorized reads and writes are rejected</td></tr>
+            </tbody>
+          </table>
+        
+          
+            <section class="subsection">
+              <h2>7.1 Manual Critical Path</h2>
+              <ul><li>Sign in as admin with admin@company.com / admin123.</li><li>Sign in as staff with staff@company.com / staff123.</li><li>Request and complete a magic-link sign-in for an existing authorized user.</li><li>Confirm that admin can access /audit.</li><li>Confirm that staff cannot access /audit or admin-only mutations.</li><li>Create and edit an asset as admin.</li><li>Assign an asset to staff and verify visible scope.</li><li>Upload a file to an asset.</li><li>Open a maintenance record and resolve it.</li><li>Verify audit entries for critical events.</li></ul>
+            </section>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>8. Environment Blueprint and MVP Scope</h1>
+          
+          <table>
+            <thead>
+              <tr><th>Variable</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>NEXT_PUBLIC_SUPABASE_URL</td><td>Supabase project URL</td></tr><tr><td>NEXT_PUBLIC_SUPABASE_ANON_KEY</td><td>Browser-safe anonymous key</td></tr><tr><td>SUPABASE_SERVICE_ROLE_KEY</td><td>Server-only elevated operations</td></tr><tr><td>NEXT_PUBLIC_SITE_URL</td><td>Canonical application URL</td></tr><tr><td>DATABASE_URL</td><td>Optional direct Postgres access for migration tooling</td></tr>
+            </tbody>
+          </table>
+        
+          
+            <section class="subsection">
+              <h2>8.1 MVP Inclusions</h2>
+              <ul><li>Login and route protection</li><li>Admin and staff roles</li><li>Dashboard overview</li><li>Asset list, detail, create, and edit paths</li><li>Assignment history</li><li>Maintenance logs</li><li>Audit logging</li><li>File upload support</li><li>Vercel deployment documentation</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>8.2 Explicit Exclusions</h2>
+              <ul><li>Barcode or QR scanning</li><li>Multi-tenant architecture</li><li>Workflow approvals</li><li>Real-time subscriptions</li><li>AI assistant features</li><li>Heavy analytics dashboards</li></ul>
+            </section>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>9. Project Definition of Done and Next Steps</h1>
+          <ul><li>Vercel deployment is working.</li><li>Supabase Hybrid Auth is live.</li><li>Supabase Postgres schema and RLS policies are implemented.</li><li>Admin login works with admin@company.com / admin123.</li><li>Staff login works with staff@company.com / staff123.</li><li>Password and magic-link sign-in both work for authorized users.</li><li>Staff is blocked from admin-only behavior.</li><li>Asset, maintenance, file, and audit workflows are verified.</li><li>Setup and deployment documentation are current.</li><li>Test evidence and review findings are complete.</li></ul>
+<p>If /test and /review are incomplete, the correct status is NOT READY.</p>
+<ol><li>Freeze the approved production scope in /spec.</li><li>Decide whether Prisma is removed immediately or through a short bridge.</li><li>Create Supabase SQL schema and RLS policies first.</li><li>Replace NextAuth with Supabase Auth and re-implement route protection.</li><li>Keep seed and QA credentials aligned so the staff account uses staff123.</li><li>Move assignment history into asset_assignments.</li><li>Complete /test, /review, and /ship before declaring the migration done.</li></ol>
+          
+        </section>
+      
+    </main>
+  </body>
+</html>

@@ -1,28 +1,28 @@
 import { redirect } from 'next/navigation'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
 import { Nav } from '@/app/components/Nav'
+import { getSupabaseSessionUser } from '@/lib/supabase/session'
+import type { AuditLogRecord } from '@/types/app'
 
 export default async function AuditLogPage() {
-  const session = await getServerSession(authOptions)
-  if (session?.user.role !== 'ADMIN') redirect('/dashboard')
+  const user = await getSupabaseSessionUser()
 
-  const logs = await prisma.auditLog.findMany({
-    include: { user: { select: { name: true, email: true } } },
-    orderBy: { createdAt: 'desc' },
-    take:    200,
-  })
+  if (user?.role !== 'ADMIN') {
+    redirect('/dashboard')
+  }
+
+  // TODO: Implement Supabase select for recent audit log entries.
+  const logs: AuditLogRecord[] = []
 
   return (
     <>
       <Nav />
       <main className="max-w-5xl mx-auto px-6 py-8">
-        <h1 className="text-xl font-semibold text-gray-800 mb-6">Audit Log</h1>
+        <h1 className="text-xl font-semibold text-gray-800 mb-2">Audit Log</h1>
+        <p className="text-xs text-gray-400 mb-6">TODO: Implement Supabase audit log query.</p>
 
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           {logs.length === 0 ? (
-            <p className="text-sm text-gray-500 p-6">No audit entries yet.</p>
+            <p className="text-sm text-gray-500 p-6">No audit entries yet. Supabase audit reads are still pending.</p>
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -47,7 +47,7 @@ export default async function AuditLogPage() {
                         {log.action}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{log.detail ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{log.detail ?? '-'}</td>
                   </tr>
                 ))}
               </tbody>

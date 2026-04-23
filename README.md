@@ -36,7 +36,23 @@ npm run seed
 npm run dev
 ```
 
-App runs at <http://localhost:3000>
+App runs at <http://localhost:3001>
+
+### Quick Start
+
+If the project is already installed:
+
+```bash
+cd it-asset-tracker
+npm run dev
+```
+
+Then open <http://localhost:3001/login>
+
+Demo accounts:
+
+- Admin: `admin@company.com` / `admin123`
+- Staff: `staff@company.com` / `staff123`
 
 ---
 

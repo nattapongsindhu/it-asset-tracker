@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <title>IT Asset Tracker - คู่มือการทำงานแบบแบ่ง Phase</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 18mm;
+      }
+
+      :root {
+        --heading: #1F4E79;
+        --border: #d0d7de;
+        --muted: #666666;
+      }
+
+      body {
+        margin: 0;
+        font-family: "TH Sarabun New", Aptos, "Segoe UI", sans-serif;
+        color: #1f2937;
+        font-size: 14pt;
+        line-height: 1.45;
+        background: #ffffff;
+      }
+
+      .cover {
+        text-align: center;
+        padding-top: 80px;
+        padding-bottom: 24px;
+      }
+
+      .cover h1 {
+        margin: 0 0 8px;
+        color: var(--heading);
+        font-size: 24pt;
+      }
+
+      .cover h2 {
+        margin: 0 0 8px;
+        font-size: 18pt;
+      }
+
+      .cover p.meta {
+        margin: 4px 0;
+        color: var(--muted);
+      }
+
+      h1, h2 {
+        color: var(--heading);
+        margin-top: 20px;
+        margin-bottom: 8px;
+      }
+
+      h1 { font-size: 18pt; }
+      h2 { font-size: 15pt; }
+
+      p {
+        margin: 0 0 10px;
+      }
+
+      ul, ol {
+        margin: 0 0 12px 22px;
+        padding: 0;
+      }
+
+      li {
+        margin: 0 0 4px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 8px 0 14px;
+        table-layout: fixed;
+      }
+
+      th, td {
+        border: 1px solid var(--border);
+        padding: 8px 10px;
+        vertical-align: top;
+        word-break: break-word;
+      }
+
+      th {
+        background: #1f4e79;
+        color: #ffffff;
+        text-align: left;
+      }
+
+      .page-break {
+        page-break-after: always;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="document">
+      <section class="cover">
+        <h1>IT Asset Tracker</h1>
+        <h2>คู่มือการทำงานแบบแบ่ง Phase</h2>
+        <p class="meta">ฉบับภาษาไทย</p>
+        <p class="meta">จัดทำเมื่อ 21 เมษายน 2569</p>
+      </section>
+      <p>คู่มือฉบับนี้ใช้เพื่อควบคุมการทำงานของโปรเจกต์ตั้งแต่เริ่มต้นจนจบ โดยเน้นการลดความผิดพลาดจากการข้ามขั้นตอน ช่วยให้กลับมาทำงานต่อได้ง่ายเมื่อหยุดกลางคัน และทำให้ Lead Tech กับ Project Manager เห็นภาพเดียวกันตลอดทั้งโครงการ</p>
+<p>โครงสร้างทั้งหมดอ้างอิง workflow หลักที่ต้องทำตามอย่างมีวินัย ได้แก่ /spec, /plan, /build, /test, /review และ /ship</p>
+<p>สำหรับโปรเจกต์นี้ เป้าหมายด้านการยืนยันตัวตนคือ Supabase Hybrid Auth: รองรับทั้ง Email + Password และ Magic Link สำหรับผู้ใช้ที่มีบัญชีอยู่แล้ว โดย credential ของ staff สำหรับ QA ให้ใช้ staff123</p>
+      <div class="page-break"></div>
+      
+        <section class="section">
+          <h1>1. หลักการควบคุมงาน</h1>
+          <p>ทุก phase ต้องตอบคำถาม 5 ข้อนี้ให้ได้ก่อนจะขยับไปขั้นถัดไป</p>
+<ol><li>ตอนนี้เรากำลังอยู่ phase อะไร</li><li>เป้าหมายของ phase นี้คืออะไร</li><li>สิ่งที่ต้องส่งมอบก่อนออกจาก phase นี้มีอะไรบ้าง</li><li>หลักฐานอะไรใช้ยืนยันว่า phase นี้ผ่านแล้ว</li><li>ถ้าหยุดงานตอนนี้ คนถัดไปต้องรู้อะไรเพื่อทำต่อได้ทันที</li></ol>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>2. เอกสารกลางที่ต้องอัปเดตเสมอ</h1>
+          <ul><li>Spec / PRD: ปัญหา ขอบเขต ข้อจำกัด และ acceptance criteria</li><li>Implementation Plan: task ที่เรียงตาม dependency</li><li>Decision Log: การตัดสินใจสำคัญด้านสถาปัตยกรรมและขอบเขต</li><li>Risk / Blocker Log: ความเสี่ยง สิ่งที่ติดขัด เจ้าของงาน และวันติดตาม</li><li>Progress Log: งานที่เสร็จ กำลังทำ และรออยู่</li><li>Verification Log: lint, build, test, QA, deployment check</li><li>Handoff Note: บริบทขั้นต่ำที่ต้องทิ้งไว้เมื่อหยุดงาน</li></ul>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>3. ภาพรวมแต่ละ Phase</h1>
+          
+          <table>
+            <thead>
+              <tr><th>Phase</th><th>เป้าหมายหลัก</th><th>สิ่งที่ต้องส่งมอบ</th><th>Gate ก่อนออกจาก Phase</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>/spec</td><td>นิยามงานให้ชัด</td><td>Technical spec หรือ PRD</td><td>ยังไม่เริ่ม implementation</td></tr><tr><td>/plan</td><td>ทำ roadmap ที่เรียงตาม dependency</td><td>Task plan พร้อม definition of done</td><td>ทุก task มี owner และ verification method</td></tr><tr><td>/build</td><td>พัฒนาเป็น slice เล็ก ๆ</td><td>Code และ config change ของ slice นั้น</td><td>slice ยังต้องย้อนกลับได้</td></tr><tr><td>/test</td><td>พิสูจน์ว่างานใช้ได้จริง</td><td>หลักฐานจากคำสั่งและการตรวจสอบ</td><td>ห้ามสรุปผลโดยไม่มี evidence</td></tr><tr><td>/review</td><td>ตรวจคุณภาพและความเสี่ยง</td><td>Findings, fixes, residual risks</td><td>ห้ามมี critical issue ค้างแบบเงียบ ๆ</td></tr><tr><td>/ship</td><td>ปล่อยขึ้น production อย่างปลอดภัย</td><td>Deployment checklist และ rollback plan</td><td>พร้อม post-release verification</td></tr>
+            </tbody>
+          </table>
+        
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>4. สิ่งที่ต้องทำก่อนเข้า Phase แรก</h1>
+          <ul><li>ระบุ owner ของงาน</li><li>ระบุว่างานรอบนี้เป็น feature, migration หรือ bug fix</li><li>ระบุ stakeholder หลัก</li><li>ระบุ milestone หรือ deadline ถ้ามี</li><li>แยกสิ่งที่เป็น fact ออกจาก assumption ที่ยังต้องพิสูจน์</li></ul>
+<p>ก่อนเริ่ม Phase 1 ทุกคนควรรู้ตรงกันว่างานนี้คืออะไร และอะไรไม่อยู่ในรอบงานนี้</p>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>5. รายละเอียดแต่ละ Phase</h1>
+          
+          
+            <section class="subsection">
+              <h2>5.1 /spec</h2>
+              <p>เป้าหมาย: ตัดความคลุมเครือออกให้มากที่สุดก่อนเริ่มแก้โค้ด</p>
+<ul><li>วิเคราะห์คำขอและตรวจ repo ปัจจุบันก่อนเสมอ</li><li>ระบุ current state, target state, scope และ non-scope</li><li>ระบุ stack, constraints, acceptance criteria และความเสี่ยงหลัก</li><li>บันทึกคำถามที่ยังไม่ปิด</li></ul>
+
+          <table>
+            <thead>
+              <tr><th>Stakeholder</th><th>สิ่งที่ต้องเห็น</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Lead Tech</td><td>ทิศทาง architecture, business rule, migration risk, security impact</td></tr><tr><td>Project Manager</td><td>ความชัดเจนของ scope, ขอบเขต MVP, ความเสี่ยงต่อ timeline, dependency ภายนอก</td></tr>
+            </tbody>
+          </table>
+        
+<ul><li>ห้ามเขียน implementation code ใน phase นี้</li><li>ห้ามเดา requirement โดยไม่ตรวจ context จริง</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>5.2 /plan</h2>
+              <p>เป้าหมาย: แปลง spec ให้เป็น roadmap ที่ track ได้จริง</p>
+<ul><li>แตกงานเป็น task เล็ก ๆ</li><li>เรียง task ตาม dependency</li><li>แยก task เสี่ยงออกจาก task ปกติ</li><li>ระบุ file, module, schema และ environment ที่ได้รับผลกระทบ</li><li>ใส่ definition of done และ verification method ให้ทุก task</li></ul>
+
+          <table>
+            <thead>
+              <tr><th>Stakeholder</th><th>สิ่งที่ต้องเห็น</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Lead Tech</td><td>ลำดับ technical task ที่ปลอดภัย และการแยกงานเสี่ยงออกจากกัน</td></tr><tr><td>Project Manager</td><td>milestone, checkpoint, และภาพ dependency ของงาน</td></tr>
+            </tbody>
+          </table>
+        
+<ul><li>ห้ามรวมหลายธีมใหญ่ไว้ใน task เดียว</li><li>ห้ามเริ่ม build ถ้า plan ยังไม่ชัด</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>5.3 /build</h2>
+              <p>เป้าหมาย: พัฒนาแบบ incremental โดยให้ verify และย้อนกลับได้</p>
+<ul><li>ลงมือทำทีละ slice</li><li>คุม scope ของ slice ให้เล็กและชัด</li><li>อัปเดต progress หลังจบแต่ละ slice</li><li>ถ้าเจอ risk ใหม่ที่กระทบ architecture ให้หยุดและปรับ plan</li><li>ทำ foundation ก่อน เช่น schema, auth, guards, env แล้วค่อย flow หลัก</li></ul>
+
+          <table>
+            <thead>
+              <tr><th>Stakeholder</th><th>สิ่งที่ต้องเห็น</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Lead Tech</td><td>คุณภาพ implementation, ความสอดคล้องกับ plan, และการไม่ over-engineer</td></tr><tr><td>Project Manager</td><td>slice ที่เสร็จแล้ว, slice ปัจจุบัน, blocker ใหม่ หรือความล่าช้า</td></tr>
+            </tbody>
+          </table>
+        
+<ul><li>ห้าม build หลาย slice ที่ verify ยากพร้อมกัน</li><li>ห้ามเปลี่ยน architecture กลางทางแบบไม่บันทึก</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>5.4 /test</h2>
+              <p>เป้าหมาย: เปลี่ยน assumption ให้เป็น proof</p>
+<ul><li>รัน lint, build และ automated tests ที่มี</li><li>ทำ manual checks บน critical path</li><li>ตรวจ role-based access, regression risk และ flow สำคัญ</li><li>บันทึกคำสั่งที่รัน สถานะ pass/fail และช่องว่างของการทดสอบ</li></ul>
+
+          <table>
+            <thead>
+              <tr><th>Stakeholder</th><th>สิ่งที่ต้องเห็น</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Lead Tech</td><td>coverage ของ path เสี่ยง เช่น auth, data, security, และ critical workflow</td></tr><tr><td>Project Manager</td><td>ความพร้อมเข้า review, defect ที่ยังเปิดอยู่, และ dependency ฝั่ง QA</td></tr>
+            </tbody>
+          </table>
+        
+<ul><li>ห้ามบอกว่างานเสร็จโดยไม่มี evidence</li><li>ห้ามซ่อน failure หรือข้าม critical-path verification</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>5.5 /review</h2>
+              <p>เป้าหมาย: ตรวจ implementation ให้พร้อมใช้งานจริงในมุม readability, security, maintainability และ production safety</p>
+<ul><li>review readability และความเรียบง่ายของโค้ด</li><li>review authorization, data protection และ security gap</li><li>review maintainability, duplication และ abstraction ที่เกินจำเป็น</li><li>review documentation, onboarding และ operational readiness</li></ul>
+
+          <table>
+            <thead>
+              <tr><th>Stakeholder</th><th>สิ่งที่ต้องเห็น</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Lead Tech</td><td>critical issue, code smell, maintainability concern และ readiness ก่อน release</td></tr><tr><td>Project Manager</td><td>residual risk, decision ที่ต้อง approve และ release blocker ที่ยังเหลือ</td></tr>
+            </tbody>
+          </table>
+        
+<ul><li>ห้ามลด review ให้เหลือแค่เรื่อง formatting</li><li>ห้ามปล่อย security gap ที่รู้แล้วโดยไม่บันทึก</li></ul>
+            </section>
+          
+
+            <section class="subsection">
+              <h2>5.6 /ship</h2>
+              <p>เป้าหมาย: ปล่อยขึ้น production อย่างปลอดภัยและรู้เส้นทาง rollback ชัดเจน</p>
+<ul><li>ตรวจ env vars, secrets, schema readiness และ deployment config</li><li>เตรียม release note และ rollback instruction</li><li>ทำ pre-release และ post-release verification</li><li>ระบุ monitoring หรือ log ที่ต้องจับตาหลัง release</li></ul>
+
+          <table>
+            <thead>
+              <tr><th>Stakeholder</th><th>สิ่งที่ต้องเห็น</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Lead Tech</td><td>deployment risk, rollback path และแผน monitoring หลังปล่อย</td></tr><tr><td>Project Manager</td><td>release window, stakeholder communication และสถานะหลังปล่อย</td></tr>
+            </tbody>
+          </table>
+        
+<ul><li>ห้ามปล่อยโดยไม่มี rollback plan</li><li>ห้ามถือว่า deploy ผ่านเท่ากับ release สำเร็จ</li></ul>
+            </section>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>6. กฎเมื่อหยุดงานและต้องกลับมาทำต่อ</h1>
+          <p>ทุกครั้งที่หยุดงานกลางคัน ต้องทิ้ง handoff note อย่างน้อย 8 รายการนี้ไว้เสมอ</p>
+<ol><li>Current Phase</li><li>Objective ของ phase ปัจจุบัน</li><li>งานที่ทำเสร็จแล้ว</li><li>งานที่ยังไม่เสร็จ</li><li>Blocker หรือ Risk ล่าสุด</li><li>Decision สำคัญล่าสุด</li><li>Evidence ที่มีแล้ว</li><li>Next Step ที่ควรทำต่อทันที</li></ol>
+          
+            <section class="subsection">
+              <h2>6.1 ตัวอย่าง Handoff Note</h2>
+              <p>Current Phase: /build. Current Slice: Hybrid auth guard update. Done: server auth helper, route guard, session role mapping และเส้นทาง login แบบ password. Not Done: การ verify callback ของ magic link และ staff restriction check บน /audit. Blocker: ต้องการ final decision เรื่อง scope การมองเห็น asset ของ staff. Latest Decision: ใช้ Supabase Hybrid Auth เป็น target และไม่ใช้ Prisma bridge สำหรับ auth. Evidence: lint ผ่านแล้ว, manual login test ยังไม่รัน. Next Step: ปิด magic-link authorization check และ /audit guard แล้วค่อยเข้า /test.</p>
+            </section>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>7. รูปแบบรายงานสถานะสำหรับ Lead Tech และ PM</h1>
+          <p>ควรใช้ format เดิมตลอดโปรเจกต์เพื่อให้ทุกคนอ่าน progress จากมุมเดียวกัน</p>
+<ul><li>Current Phase</li><li>Completed This Period</li><li>In Progress</li><li>Next Phase Gate</li><li>Risks / Blockers</li><li>Decisions Needed</li><li>ETA to Next Milestone</li></ul>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>8. Checklist คุมคุณภาพระดับโปรเจกต์</h1>
+          <ul><li>ทุก phase มี owner ชัดเจน</li><li>ทุก phase มี exit criteria</li><li>ทุก phase มี evidence</li><li>ทุกครั้งที่หยุดงานมี handoff note</li><li>ทุก decision สำคัญถูกบันทึก</li><li>ทุก blocker มี owner และวัน follow-up</li><li>ทุก release มี rollback plan</li></ul>
+          
+        </section>
+      
+
+        <section class="section">
+          <h1>9. สรุปสั้น</h1>
+          <ul><li>Spec ก่อน Build</li><li>Build ทีละ Slice</li><li>ทุก Slice ต้อง Verify</li><li>Review ก่อน Ship</li><li>หยุดเมื่อไรต้องทิ้ง Handoff Note</li></ul>
+<p>เมื่อทำตามกฎนี้ โปรเจกต์จะเดินต่อได้แม้เปลี่ยนคนทำ หยุดงานกลางคัน หรือมีหลาย stakeholder ต้องติดตามงานพร้อมกันตั้งแต่ kickoff จน release</p>
+          
+        </section>
+      
+    </main>
+  </body>
+</html>

@@ -1,0 +1,25 @@
+
+> it-asset-tracker@0.1.0 dev
+> next dev -p 3001
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3001
+  - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 2.1s
+ ○ Compiling / ...
+ ✓ Compiled / in 3.3s (810 modules)
+ GET / 307 in 3542ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 2.9s (804 modules)
+ GET /login 200 in 2738ms
+ GET / 307 in 130ms
+ GET /login 200 in 53ms
+ ✓ Compiled /api/auth/[...nextauth] in 117ms (540 modules)
+ GET /api/auth/session 200 in 587ms
+ GET /api/auth/session 200 in 22ms
+ GET / 307 in 163ms
+ GET /login 200 in 75ms
+ GET /api/auth/session 200 in 13ms
+ GET /api/auth/session 200 in 7ms

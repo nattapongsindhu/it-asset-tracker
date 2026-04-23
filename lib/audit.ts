@@ -1,6 +1,3 @@
-import type { PrismaClient, Prisma } from '@prisma/client'
-import { prisma } from './prisma'
-
 type AuditParams = {
   userId?: string | null
   action: string
@@ -9,8 +6,7 @@ type AuditParams = {
   detail?: string | null
 }
 
-type AuditClient = PrismaClient | Prisma.TransactionClient
-
-export async function logAudit(params: AuditParams, db: AuditClient = prisma) {
-  await db.auditLog.create({ data: params })
+export async function logAudit(params: AuditParams) {
+  // TODO: Implement Supabase insert for audit logging.
+  console.warn('TODO: Implement Supabase audit log insert.', params)
 }

@@ -1,10 +1,14 @@
 'use client'
-import { deleteAsset } from '@/app/actions/assets'
 
-export function DeleteAssetButton({ id, assetTag }: { id: string; assetTag: string }) {
-  async function handleDelete() {
-    if (!confirm(`Delete asset ${assetTag}? This cannot be undone.`)) return
-    await deleteAsset(id)
+export function DeleteAssetButton({ assetTag }: { id: string; assetTag: string }) {
+  function handleDelete() {
+    const confirmed = confirm(`Delete asset ${assetTag}? This cannot be undone.`)
+
+    if (!confirmed) {
+      return
+    }
+
+    alert('TODO: Implement Supabase asset delete.')
   }
 
   return (
