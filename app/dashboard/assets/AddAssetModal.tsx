@@ -1,7 +1,6 @@
 'use client'
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { AssetForm } from '@/app/components/AssetForm'
 import type { AssetUserOption } from '@/types/app'
@@ -20,29 +19,39 @@ function removeNewParam(searchParams: { toString(): string }) {
   return nextParams
 }
 
+function addNewParam(searchParams: { toString(): string }) {
+  const nextParams = new URLSearchParams(searchParams.toString())
+  nextParams.set('new', '1')
+  return nextParams
+}
+
 export function AddAssetModal({ action, openByDefault = false, users }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [isOpen, setIsOpen] = useState(openByDefault)
+  const isOpen = openByDefault || searchParams.get('new') === '1'
+
+  function buildTarget(nextParams: URLSearchParams) {
+    return nextParams.toString().length > 0 ? `${pathname}?${nextParams.toString()}` : pathname
+  }
+
+  function openModal() {
+    router.push(buildTarget(addNewParam(searchParams)), { scroll: false })
+  }
 
   function closeModal() {
-    setIsOpen(false)
-
     if (!searchParams.has('new')) {
       return
     }
 
-    const nextParams = removeNewParam(searchParams)
-    const target = nextParams.toString().length > 0 ? `${pathname}?${nextParams.toString()}` : pathname
-    router.replace(target)
+    router.replace(buildTarget(removeNewParam(searchParams)), { scroll: false })
   }
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setIsOpen(true)}
+        onClick={openModal}
         className="print-hide rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
       >
         <span className="inline-flex items-center gap-2">
@@ -76,7 +85,7 @@ export function AddAssetModal({ action, openByDefault = false, users }: Props) {
 
             <AssetForm
               action={action}
-              cancelHref="/dashboard/assets"
+              cancelHref={buildTarget(removeNewParam(searchParams))}
               submitLabel="Create Asset"
               users={users}
             />
