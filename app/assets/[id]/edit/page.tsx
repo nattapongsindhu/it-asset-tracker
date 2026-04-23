@@ -37,7 +37,7 @@ export default async function EditAssetPage({ params }: Props) {
         )
         .eq('id', params.id)
         .maybeSingle(),
-      supabase.from('profiles').select('id, full_name, email').order('full_name'),
+      supabase.from('profiles').select('id, email').order('email'),
     ])
 
     if (assetRow) {
@@ -58,7 +58,7 @@ export default async function EditAssetPage({ params }: Props) {
     users = (profileRows ?? []).map(profile => ({
       email: profile.email ?? '',
       id: profile.id,
-      name: profile.full_name ?? profile.email ?? 'Unknown user',
+      name: profile.email ?? 'Unknown user',
     }))
   } catch {
     users = []

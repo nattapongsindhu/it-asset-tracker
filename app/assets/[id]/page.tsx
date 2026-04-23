@@ -53,11 +53,11 @@ export default async function AssetDetailPage({ params }: Props) {
   if (asset.assigned_user_id) {
     const { data: assignedUser } = await supabase
       .from('profiles')
-      .select('full_name, email')
+      .select('email')
       .eq('id', asset.assigned_user_id)
       .maybeSingle()
 
-    assignedUserName = assignedUser?.full_name ?? assignedUser?.email ?? '-'
+    assignedUserName = assignedUser?.email ?? '-'
   }
 
   const rows = [

@@ -5,7 +5,6 @@ import { createSupabaseServerClient } from './server'
 
 type ProfileRow = {
   email: string | null
-  full_name: string | null
   role: string | null
 }
 
@@ -19,12 +18,11 @@ function mapUser(user: User, profile: ProfileRow | null): AppSessionUser {
     typeof metadata.name === 'string' && metadata.name.trim().length > 0
       ? metadata.name
       : user.email?.split('@')[0] ?? 'User'
-  const profileName = profile?.full_name?.trim()
 
   return {
     id: user.id,
     email: profile?.email ?? user.email ?? '',
-    name: profileName && profileName.length > 0 ? profileName : fallbackName,
+    name: fallbackName,
     role: normalizeRole(profile?.role),
   }
 }
@@ -42,7 +40,7 @@ export async function getSupabaseSessionUser(): Promise<AppSessionUser | null> {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('email, full_name, role')
+      .select('email, role')
       .eq('id', user.id)
       .maybeSingle()
 

@@ -16,13 +16,13 @@ export default async function NewAssetPage() {
   try {
     const { data: profileRows } = await supabase
       .from('profiles')
-      .select('id, full_name, email')
-      .order('full_name')
+      .select('id, email')
+      .order('email')
 
     users = (profileRows ?? []).map(profile => ({
       email: profile.email ?? '',
       id: profile.id,
-      name: profile.full_name ?? profile.email ?? 'Unknown user',
+      name: profile.email ?? 'Unknown user',
     }))
   } catch {
     users = []

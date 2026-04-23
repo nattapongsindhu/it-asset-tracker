@@ -33,7 +33,6 @@ type Props = {
 
 type ProfileRow = {
   email: string | null
-  full_name: string | null
   id: string
 }
 
@@ -113,7 +112,7 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
     if (assignedUserIds.length > 0) {
       const { data: assignedProfiles, error: profileError } = await supabase
         .from('profiles')
-        .select('id, full_name, email')
+        .select('id, email')
         .in('id', assignedUserIds)
 
       if (profileError) {
@@ -132,7 +131,7 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
           ? {
               email: assignedUser.email ?? '',
               id: assignedUser.id,
-              name: assignedUser.full_name ?? assignedUser.email ?? 'Unassigned',
+              name: assignedUser.email ?? 'Unassigned',
             }
           : null,
         assignedUserId: row.assigned_user_id,
@@ -157,8 +156,8 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
     if (isAdmin) {
       const { data: profileRows, error: profileListError } = await supabase
         .from('profiles')
-        .select('id, full_name, email')
-        .order('full_name')
+        .select('id, email')
+        .order('email')
 
       if (profileListError) {
         throw profileListError
@@ -167,7 +166,7 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
       users = (profileRows ?? []).map((profile: ProfileRow) => ({
         email: profile.email ?? '',
         id: profile.id,
-        name: profile.full_name ?? profile.email ?? 'Unknown user',
+        name: profile.email ?? 'Unknown user',
       }))
     }
   } catch {
