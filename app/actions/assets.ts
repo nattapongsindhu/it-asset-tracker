@@ -26,6 +26,10 @@ function normalizeOptionalValue(value: string | undefined) {
   return value && value.trim().length > 0 ? value.trim() : null
 }
 
+function buildAssetName(brand: string, model: string) {
+  return `${brand} ${model}`.trim()
+}
+
 function revalidateAssetViews(assetId?: string) {
   revalidatePath('/dashboard')
   revalidatePath('/dashboard/assets')
@@ -67,6 +71,7 @@ export async function createAsset(_state: ActionState, formData: FormData): Prom
     category: parsed.data.type,
     created_by: user.id,
     model: parsed.data.model,
+    name: buildAssetName(parsed.data.brand, parsed.data.model),
     notes: normalizeOptionalValue(parsed.data.notes),
     serial_number: normalizeOptionalValue(parsed.data.serialNumber),
     status: parsed.data.status,
@@ -123,6 +128,7 @@ export async function updateAsset(id: string, _state: ActionState, formData: For
     brand: parsed.data.brand,
     category: parsed.data.type,
     model: parsed.data.model,
+    name: buildAssetName(parsed.data.brand, parsed.data.model),
     notes: normalizeOptionalValue(parsed.data.notes),
     serial_number: normalizeOptionalValue(parsed.data.serialNumber),
     status: parsed.data.status,

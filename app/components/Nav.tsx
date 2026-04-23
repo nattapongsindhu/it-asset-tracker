@@ -35,6 +35,12 @@ function isActive(href: string, currentPath: string) {
 
 export function Nav({ currentPath, user }: Props) {
   const isAdmin = user.role === 'ADMIN'
+  const auditShortcutHref = currentPath === '/audit' ? '/dashboard' : '/audit'
+  const auditShortcutLabel = currentPath === '/audit' ? 'Back to Dashboard' : 'Open Audit Log'
+  const auditShortcutText =
+    currentPath === '/audit'
+      ? 'Return to the main dashboard after reviewing admin activity.'
+      : 'Use the audit route directly while the admin utility menu stays intentionally small.'
 
   return (
     <>
@@ -123,13 +129,13 @@ export function Nav({ currentPath, user }: Props) {
                 </p>
               </div>
               <p className="mt-2 text-sm leading-6 text-amber-900">
-                Use the audit route directly while the admin utility menu stays intentionally small.
+                {auditShortcutText}
               </p>
               <Link
-                href="/audit"
+                href={auditShortcutHref}
                 className="mt-4 inline-flex rounded-full border border-amber-300 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
               >
-                Open Audit Log
+                {auditShortcutLabel}
               </Link>
             </div>
           )}

@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { AppShell } from '@/app/components/AppShell'
 import { PlaceholderActionGroup } from '@/app/components/PlaceholderActionGroup'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
@@ -132,6 +133,9 @@ export default async function AuditLogPage() {
       <section className="mx-auto max-w-6xl">
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
+            <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-800">
+              Back to dashboard
+            </Link>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Admin Audit</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">Audit Log</h1>
             <p className="mt-3 text-sm leading-7 text-slate-600">
