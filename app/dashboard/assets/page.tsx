@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Boxes, Filter, PencilLine, Search, ShieldCheck, UserCircle2 } from 'lucide-react'
+import { Boxes, Filter, Pencil, Search, ShieldCheck, UserCircle2 } from 'lucide-react'
 import { createAsset } from '@/app/actions/assets'
 import { AppShell } from '@/app/components/AppShell'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
@@ -366,7 +366,7 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
                               className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
                             >
                               <span className="inline-flex items-center gap-1.5">
-                                <PencilLine className="h-3.5 w-3.5" />
+                                <Pencil className="h-3.5 w-3.5" />
                                 Edit
                               </span>
                             </Link>
