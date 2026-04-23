@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ClearAuditLogsButton, DeleteAuditLogButton } from './AuditLogActions'
 import { AppShell } from '@/app/components/AppShell'
 import { LocalizedDateTime } from '@/app/components/LocalizedDateTime'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
@@ -79,7 +80,7 @@ export default async function AuditLogPage() {
       .from('audit_logs')
       .select('id, action, detail, created_at, actor_id, entity_type, entity_id')
       .order('created_at', { ascending: false })
-      .limit(200)
+      .limit(1000)
 
     if (auditError) {
       throw auditError
@@ -142,6 +143,9 @@ export default async function AuditLogPage() {
               Review recent system activity captured in the Supabase-backed audit timeline.
             </p>
           </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <ClearAuditLogsButton disabled={logs.length === 0} />
+          </div>
         </div>
 
         <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
@@ -157,6 +161,7 @@ export default async function AuditLogPage() {
                   <th className="px-4 py-3 text-left font-medium text-slate-600">User</th>
                   <th className="px-4 py-3 text-left font-medium text-slate-600">Action</th>
                   <th className="px-4 py-3 text-left font-medium text-slate-600">Detail</th>
+                  <th className="print-hide px-4 py-3 text-left font-medium text-slate-600">Delete</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -174,6 +179,9 @@ export default async function AuditLogPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-slate-600">{log.detail ?? '-'}</td>
+                    <td className="print-hide px-4 py-3">
+                      <DeleteAuditLogButton id={log.id} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -182,7 +190,7 @@ export default async function AuditLogPage() {
         </div>
 
         <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-          Showing last {logs.length} entries
+          Showing last {logs.length} entries (max 1000)
         </p>
       </section>
     </AppShell>
