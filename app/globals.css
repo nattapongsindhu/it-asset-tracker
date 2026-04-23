@@ -54,11 +54,6 @@
     display: block !important;
   }
 
-  .print-stats-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 8px !important;
-  }
-
   .print-card {
     overflow: visible !important;
     border: 1px solid #cbd5e1 !important;
@@ -88,5 +83,10 @@
   .print-table tr {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .print-table th:last-child,
+  .print-table td:last-child {
+    display: none !important;
   }
 }

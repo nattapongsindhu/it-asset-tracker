@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { AppShell } from '@/app/components/AppShell'
-import { PlaceholderActionGroup } from '@/app/components/PlaceholderActionGroup'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseAdmin } from '@/lib/supabase/session'
 import type { AuditLogRecord } from '@/types/app'
@@ -142,7 +141,6 @@ export default async function AuditLogPage() {
               Review recent system activity captured in the Supabase-backed audit timeline.
             </p>
           </div>
-          <PlaceholderActionGroup showEdit />
         </div>
 
         <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">

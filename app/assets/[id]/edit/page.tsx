@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { AssetForm } from '@/app/components/AssetForm'
 import { updateAsset } from '@/app/actions/assets'
 import { AppShell } from '@/app/components/AppShell'
-import { PlaceholderActionGroup } from '@/app/components/PlaceholderActionGroup'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseAdmin } from '@/lib/supabase/session'
 import type { AssetRecord, AssetUserOption } from '@/types/app'
@@ -79,7 +78,6 @@ export default async function EditAssetPage({ params }: Props) {
               Review the current values, then update details in the same compact form layout.
             </p>
           </div>
-          <PlaceholderActionGroup showEdit />
         </div>
 
         <AssetForm action={action} asset={asset} cancelHref={`/assets/${params.id}`} users={users} />

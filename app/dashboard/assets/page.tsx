@@ -343,17 +343,6 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
                                 Edit
                               </span>
                             </Link>
-                          ) : (
-                            <button
-                              type="button"
-                              disabled
-                              className="rounded-full border border-dashed border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
-                            >
-                              <span className="inline-flex items-center gap-1.5">
-                                <PencilLine className="h-3.5 w-3.5" />
-                                Edit
-                              </span>
-                            </button>
                           )}
                         </div>
                       </td>

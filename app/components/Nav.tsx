@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { Boxes, LayoutDashboard, ShieldCheck } from 'lucide-react'
 import type { AppSessionUser } from '@/types/app'
-import { PlaceholderActionGroup } from './PlaceholderActionGroup'
 import { SignOutButton } from './SignOutButton'
 
 const NAV_ITEMS = [
@@ -64,14 +63,12 @@ export function Nav({ currentPath, user }: Props) {
               <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">
                 {user.role}
               </span>
-              <PlaceholderActionGroup compact showEdit={isAdmin} />
             </div>
           </div>
 
           <div className="mt-6">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Menu</p>
-              <PlaceholderActionGroup compact showEdit={isAdmin} />
             </div>
             <nav className="space-y-2">
               {NAV_ITEMS.map(item => {
@@ -147,8 +144,7 @@ export function Nav({ currentPath, user }: Props) {
                 ? 'Admin mode is active. Management buttons are visible where needed.'
                 : 'Staff mode is active. Management buttons stay hidden for read-only use.'}
             </p>
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <PlaceholderActionGroup compact showEdit={isAdmin} />
+            <div className="mt-4 flex items-center justify-end gap-3">
               <SignOutButton />
             </div>
           </div>
@@ -201,8 +197,6 @@ export function Nav({ currentPath, user }: Props) {
               </Link>
             )}
           </div>
-
-          <PlaceholderActionGroup compact showEdit={isAdmin} />
         </div>
       </div>
     </>

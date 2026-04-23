@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import type { AppSessionUser } from '@/types/app'
-import { PlaceholderActionGroup } from './PlaceholderActionGroup'
 import { Nav } from './Nav'
 import { PrintButton } from './PrintButton'
 
@@ -11,8 +10,6 @@ type Props = {
 }
 
 export function AppShell({ children, currentPath, user }: Props) {
-  const isAdmin = user.role === 'ADMIN'
-
   return (
     <div className="min-h-screen bg-[#f4f1ea] text-slate-900">
       <Nav currentPath={currentPath} user={user} />
@@ -32,7 +29,6 @@ export function AppShell({ children, currentPath, user }: Props) {
                 <span className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Role {user.role}
                 </span>
-                <PlaceholderActionGroup showEdit={isAdmin} />
                 <PrintButton />
               </div>
             </div>

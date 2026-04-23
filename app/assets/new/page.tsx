@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { AssetForm } from '@/app/components/AssetForm'
 import { createAsset } from '@/app/actions/assets'
 import { AppShell } from '@/app/components/AppShell'
-import { PlaceholderActionGroup } from '@/app/components/PlaceholderActionGroup'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseAdmin } from '@/lib/supabase/session'
 import type { AssetUserOption } from '@/types/app'
@@ -41,7 +40,6 @@ export default async function NewAssetPage() {
               Create a new asset record with clean defaults and a compact assignment workflow.
             </p>
           </div>
-          <PlaceholderActionGroup showEdit />
         </div>
 
         <AssetForm action={createAsset} cancelHref="/dashboard/assets" users={users} />

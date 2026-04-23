@@ -3,13 +3,11 @@ import {
   Archive,
   Boxes,
   Mail,
-  PencilLine,
   ShieldCheck,
   UserCircle2,
   Wrench,
 } from 'lucide-react'
 import { AppShell } from '@/app/components/AppShell'
-import { PlaceholderActionGroup } from '@/app/components/PlaceholderActionGroup'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseUser } from '@/lib/supabase/session'
 
@@ -99,7 +97,7 @@ export default async function DashboardPage() {
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
               Welcome back, {user.name}
             </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
+            <p className="print-hide mt-3 max-w-3xl text-sm leading-7 text-slate-600">
               This portfolio-lite dashboard keeps the workspace tidy: recent assets, clean counts,
               and a clear profile snapshot for the signed-in user.
             </p>
@@ -114,11 +112,10 @@ export default async function DashboardPage() {
                 Add Asset
               </Link>
             )}
-            <PlaceholderActionGroup showEdit={isAdmin} />
           </div>
         </div>
 
-        <div className="print-stats-grid grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="print-hide grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           {stats.map(stat => {
             const Icon = stat.icon
 
@@ -199,28 +196,6 @@ export default async function DashboardPage() {
                             >
                               View
                             </Link>
-                            {isAdmin ? (
-                              <Link
-                                href={`/assets/${asset.id}/edit`}
-                                className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
-                              >
-                                <span className="inline-flex items-center gap-1.5">
-                                  <PencilLine className="h-3.5 w-3.5" />
-                                  Edit
-                                </span>
-                              </Link>
-                            ) : (
-                              <button
-                                type="button"
-                                disabled
-                                className="rounded-full border border-dashed border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
-                              >
-                                <span className="inline-flex items-center gap-1.5">
-                                  <PencilLine className="h-3.5 w-3.5" />
-                                  Edit
-                                </span>
-                              </button>
-                            )}
                           </div>
                         </td>
                       </tr>
