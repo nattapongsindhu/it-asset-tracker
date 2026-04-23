@@ -24,6 +24,10 @@ type Props = {
 }
 
 function isActive(href: string, currentPath: string) {
+  if (href === '/dashboard') {
+    return currentPath === '/dashboard'
+  }
+
   return href === '/dashboard/assets'
     ? currentPath === '/dashboard/assets' ||
         currentPath.startsWith('/dashboard/assets/') ||
