@@ -1,24 +1,18 @@
 import Link from 'next/link'
-import { Boxes, Filter, Pencil, Search, ShieldCheck, UserCircle2 } from 'lucide-react'
-import { createAsset } from '@/app/actions/assets'
+import { Boxes, Filter, Search, ShieldCheck, UserCircle2 } from 'lucide-react'
+import { bulkUpdateAssetStatus, createAsset } from '@/app/actions/assets'
 import { AppShell } from '@/app/components/AppShell'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseUser } from '@/lib/supabase/session'
-import type { AssetRecord, AssetUserOption } from '@/types/app'
+import type { AssetRecord, AssetStatus, AssetUserOption } from '@/types/app'
 import { AddAssetModal } from './AddAssetModal'
+import { AssetTable } from './AssetTable'
 
-const STATUS_LABELS: Record<string, string> = {
+const STATUS_LABELS: Record<AssetStatus, string> = {
   IN_STOCK: 'In Stock',
   ASSIGNED: 'Assigned',
   IN_REPAIR: 'In Repair',
   RETIRED: 'Retired',
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  IN_STOCK: 'bg-emerald-100 text-emerald-700',
-  ASSIGNED: 'bg-blue-100 text-blue-700',
-  IN_REPAIR: 'bg-amber-100 text-amber-700',
-  RETIRED: 'bg-slate-200 text-slate-600',
 }
 
 type Props = {
@@ -38,7 +32,7 @@ type AssetRow = {
   id: string
   model: string | null
   serial_number: string | null
-  status: string | null
+  status: AssetStatus | null
   warranty_expiry: string | null
 }
 
@@ -47,18 +41,12 @@ type ProfileRow = {
   id: string
 }
 
-function getSingleValue(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value
+function getProfileLabel(profile: ProfileRow | undefined | null, fallback = 'Unknown user') {
+  return profile?.email?.trim() || fallback
 }
 
-function formatDate(value: string | Date | null | undefined) {
-  if (!value) {
-    return '-'
-  }
-
-  return new Intl.DateTimeFormat('en-US', {
-    dateStyle: 'medium',
-  }).format(new Date(value))
+function getSingleValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value
 }
 
 export default async function DashboardAssetsPage({ searchParams }: Props) {
@@ -138,9 +126,9 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
         assetTag: row.asset_tag ?? '',
         assignedUser: assignedUser
           ? {
-              email: assignedUser.email ?? '',
+              email: getProfileLabel(assignedUser, ''),
               id: assignedUser.id,
-              name: assignedUser.email ?? 'Unassigned',
+              name: getProfileLabel(assignedUser),
             }
           : null,
         assignedUserId: row.assigned_user_id,
@@ -166,6 +154,7 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
       const { data: profileRows, error: profileListError } = await supabase
         .from('profiles')
         .select('id, email')
+        .not('email', 'is', null)
         .order('email')
 
       if (profileListError) {
@@ -173,9 +162,9 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
       }
 
       users = (profileRows ?? []).map((profile: ProfileRow) => ({
-        email: profile.email ?? '',
+        email: getProfileLabel(profile, ''),
         id: profile.id,
-        name: profile.email ?? 'Unknown user',
+        name: getProfileLabel(profile),
       }))
     }
   } catch {
@@ -311,73 +300,7 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
           ) : assets.length === 0 ? (
             <p className="p-6 text-sm text-slate-500">No assets matched the current filters.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="print-table min-w-full text-sm">
-                <thead className="border-b border-slate-200 bg-slate-50 print:bg-white">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Tag</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Type</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Brand / Model</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Assigned To</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Warranty</th>
-                    <th className="print-hide px-4 py-3 text-left font-medium text-slate-600">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {assets.map(asset => (
-                    <tr key={asset.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3">
-                        <Link
-                          href={`/assets/${asset.id}`}
-                          className="font-mono text-slate-900 hover:underline"
-                        >
-                          {asset.assetTag}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">{asset.type}</td>
-                      <td className="px-4 py-3 text-slate-800">
-                        {asset.brand} {asset.model}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                            STATUS_COLORS[asset.status] ?? 'bg-slate-100 text-slate-500'
-                          }`}
-                        >
-                          {STATUS_LABELS[asset.status] ?? asset.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">{asset.assignedUser?.name ?? '-'}</td>
-                      <td className="px-4 py-3 text-slate-600">{formatDate(asset.warrantyExpiry)}</td>
-                      <td className="print-hide px-4 py-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Link
-                            href={`/assets/${asset.id}`}
-                            className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
-                          >
-                            View
-                          </Link>
-                          {isAdmin && (
-                            <Link
-                              href={`/assets/${asset.id}/edit`}
-                              className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
-                            >
-                              <span className="inline-flex items-center gap-1.5">
-                                <Pencil className="h-3.5 w-3.5" />
-                                Edit
-                              </span>
-                            </Link>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <AssetTable action={bulkUpdateAssetStatus} assets={assets} isAdmin={isAdmin} />
           )}
         </div>
       </section>

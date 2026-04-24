@@ -8,6 +8,10 @@ import type { AssetRecord, AssetUserOption } from '@/types/app'
 
 type Props = { params: { id: string } }
 
+function getProfileLabel(email: string | null | undefined, fallback = 'Unknown user') {
+  return email?.trim() || fallback
+}
+
 export default async function EditAssetPage({ params }: Props) {
   const user = await requireSupabaseAdmin(`/assets/${params.id}`)
   const supabase = createSupabaseServerClient()
@@ -36,7 +40,7 @@ export default async function EditAssetPage({ params }: Props) {
         )
         .eq('id', params.id)
         .maybeSingle(),
-      supabase.from('profiles').select('id, email').order('email'),
+      supabase.from('profiles').select('id, email').not('email', 'is', null).order('email'),
     ])
 
     if (assetRow) {
@@ -55,9 +59,9 @@ export default async function EditAssetPage({ params }: Props) {
     }
 
     users = (profileRows ?? []).map(profile => ({
-      email: profile.email ?? '',
+      email: getProfileLabel(profile.email, ''),
       id: profile.id,
-      name: profile.email ?? 'Unknown user',
+      name: getProfileLabel(profile.email),
     }))
   } catch {
     users = []

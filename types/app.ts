@@ -1,5 +1,7 @@
 export type AppRole = 'ADMIN' | 'STAFF'
 
+export type AssetStatus = 'IN_STOCK' | 'ASSIGNED' | 'IN_REPAIR' | 'RETIRED'
+
 export type AppSessionUser = {
   id: string
   email: string
@@ -20,7 +22,7 @@ export type AssetRecord = {
   brand: string
   model: string
   serialNumber?: string | null
-  status: string
+  status: AssetStatus
   assignedUserId?: string | null
   assignedUser?: AssetUserOption | null
   warrantyExpiry?: string | Date | null

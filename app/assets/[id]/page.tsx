@@ -43,7 +43,7 @@ export default async function AssetDetailPage({ params }: Props) {
     notFound()
   }
 
-  let assignedUserName = '-'
+  let assignedUserName = 'Unassigned'
 
   if (asset.assigned_user_id) {
     const { data: assignedUser } = await supabase
@@ -52,8 +52,12 @@ export default async function AssetDetailPage({ params }: Props) {
       .eq('id', asset.assigned_user_id)
       .maybeSingle()
 
-    assignedUserName = assignedUser?.email ?? '-'
+    assignedUserName = assignedUser?.email?.trim() || 'Unknown user'
   }
+
+  const assignmentSummary = asset.assigned_user_id
+    ? `Currently assigned to ${assignedUserName}.`
+    : 'Currently unassigned and ready to return to stock workflows.'
 
   const rows: DetailRow[] = [
     { label: 'Asset Tag', value: formatValue(asset.asset_tag) },
@@ -114,6 +118,12 @@ export default async function AssetDetailPage({ params }: Props) {
         </div>
 
         <div className="print-card overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+              Assignment
+            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-700">{assignmentSummary}</p>
+          </div>
           {rows.map(row => (
             <div
               key={row.label}

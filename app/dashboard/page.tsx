@@ -8,6 +8,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import { AppShell } from '@/app/components/AppShell'
+import { CategoryAnalytics } from '@/app/dashboard/CategoryAnalytics'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseUser } from '@/lib/supabase/session'
 
@@ -19,6 +20,17 @@ type AssetSummaryRow = {
   id: string
   status: string | null
   updated_at: string | null
+}
+type AssetBreakdownRow = {
+  category: string | null
+  status: string | null
+}
+type CategoryShare = {
+  color: string
+  count: number
+  href: string
+  label: string
+  percentage: number
 }
 
 const STATUS_META: Array<{
@@ -32,6 +44,7 @@ const STATUS_META: Array<{
   { icon: Wrench, label: 'In Repair', status: 'IN_REPAIR' },
   { icon: ShieldCheck, label: 'Retired', status: 'RETIRED' },
 ]
+const CATEGORY_COLORS = ['#0f766e', '#2563eb', '#d97706', '#e11d48', '#0f172a', '#059669'] as const
 
 function formatRelativeDate(value: string | null) {
   if (!value) {
@@ -43,39 +56,85 @@ function formatRelativeDate(value: string | null) {
   }).format(new Date(value))
 }
 
+function buildCategoryShares(rows: AssetBreakdownRow[]): CategoryShare[] {
+  const totals = new Map<string, number>()
+
+  rows.forEach(row => {
+    const label = row.category?.trim() || 'Other'
+    totals.set(label, (totals.get(label) ?? 0) + 1)
+  })
+
+  const orderedCategories = Array.from(totals.entries())
+    .map(([label, count]) => ({ label, count }))
+    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label))
+
+  const total = orderedCategories.reduce((sum, item) => sum + item.count, 0)
+
+  if (total === 0) {
+    return []
+  }
+
+  const visibleCategories = orderedCategories.slice(0, 5)
+  const remainingCount = orderedCategories.slice(5).reduce((sum, item) => sum + item.count, 0)
+
+  if (remainingCount > 0) {
+    visibleCategories.push({ label: 'Other', count: remainingCount })
+  }
+
+  return visibleCategories.map((item, index) => ({
+    color: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
+    count: item.count,
+    href:
+      item.label === 'Other'
+        ? '/dashboard/assets?type=Other'
+        : `/dashboard/assets?type=${encodeURIComponent(item.label)}`,
+    label: item.label,
+    percentage: Number(((item.count / total) * 100).toFixed(1)),
+  }))
+}
+
 export default async function DashboardPage() {
   const user = await requireSupabaseUser()
   const supabase = createSupabaseServerClient()
   const isAdmin = user.role === 'ADMIN'
 
   let recentAssets: AssetSummaryRow[] = []
-  let assetStatuses: string[] = []
+  let assetBreakdownRows: AssetBreakdownRow[] = []
 
   try {
     const [
       { data: recentAssetRows, error: recentAssetsError },
-      { data: statusRows, error: statusError },
+      { data: breakdownRows, error: breakdownError },
     ] = await Promise.all([
       supabase
         .from('assets')
         .select('id, asset_tag, category, status, updated_at')
         .order('updated_at', { ascending: false })
         .limit(6),
-      supabase.from('assets').select('status'),
+      supabase.from('assets').select('status, category'),
     ])
 
-    if (recentAssetsError || statusError) {
-      throw recentAssetsError ?? statusError
+    if (recentAssetsError || breakdownError) {
+      throw recentAssetsError ?? breakdownError
     }
 
     recentAssets = recentAssetRows ?? []
-    assetStatuses = (statusRows ?? [])
-      .map(row => row.status)
-      .filter((status): status is string => typeof status === 'string')
+    assetBreakdownRows = (breakdownRows ?? []).map(row => ({
+      category: row.category,
+      status: row.status,
+    }))
   } catch {
     recentAssets = []
-    assetStatuses = []
+    assetBreakdownRows = []
   }
+
+  const assetStatuses = assetBreakdownRows
+    .map(row => row.status)
+    .filter((status): status is string => typeof status === 'string')
+  const categoryShares = buildCategoryShares(assetBreakdownRows)
+  const totalAssets = assetStatuses.length
+  const assignedRatio =
+    totalAssets === 0 ? 0 : Math.round((statsCount(assetStatuses, 'ASSIGNED') / totalAssets) * 100)
 
   const stats = STATUS_META.map(item => ({
     href: item.status ? `/dashboard/assets?status=${item.status}` : '/dashboard/assets',
@@ -148,63 +207,94 @@ export default async function DashboardPage() {
           })}
         </div>
 
-        <div className="print-single-column mt-8 grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
-          <section className="print-card rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-                  Recent Assets
-                </p>
-                <h2 className="mt-2 text-xl font-semibold text-slate-900">Latest inventory updates</h2>
+        <div className="print-single-column mt-8 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-6">
+            <section className="print-hide rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                    Analytics
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold text-slate-900">Asset mix by category</h2>
+                </div>
+                <Link
+                  href="/dashboard/assets"
+                  className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900"
+                >
+                  Open full inventory
+                </Link>
               </div>
-              <Link
-                href="/dashboard/assets"
-                className="print-hide rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900"
-              >
-                Open asset list
-              </Link>
-            </div>
 
-            {recentAssets.length === 0 ? (
-              <div className="mt-6 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-sm text-slate-500">
-                No assets are available yet. Add the first record from the asset dashboard when you are ready.
+              {categoryShares.length === 0 ? (
+                <div className="mt-6 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-sm text-slate-500">
+                  Add asset records to unlock category analytics.
+                </div>
+              ) : (
+                <CategoryAnalytics
+                  assignedRatio={assignedRatio}
+                  shares={categoryShares}
+                  totalAssets={totalAssets}
+                />
+              )}
+            </section>
+
+            <section className="print-card rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                    Recent Assets
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold text-slate-900">Latest inventory updates</h2>
+                </div>
+                <Link
+                  href="/dashboard/assets"
+                  className="print-hide rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900"
+                >
+                  Open asset list
+                </Link>
               </div>
-            ) : (
-              <div className="mt-6 overflow-x-auto">
-                <table className="print-table min-w-full text-sm">
-                  <thead className="border-b border-slate-200 bg-slate-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-medium text-slate-600">Tag</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-600">Type</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-600">Updated</th>
-                      <th className="print-hide px-4 py-3 text-left font-medium text-slate-600">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {recentAssets.map(asset => (
-                      <tr key={asset.id} className="hover:bg-slate-50">
-                        <td className="px-4 py-3 font-mono text-slate-900">{asset.asset_tag ?? '-'}</td>
-                        <td className="px-4 py-3 text-slate-600">{asset.category ?? 'Other'}</td>
-                        <td className="px-4 py-3 text-slate-600">{asset.status ?? 'UNKNOWN'}</td>
-                        <td className="px-4 py-3 text-slate-600">{formatRelativeDate(asset.updated_at)}</td>
-                        <td className="print-hide px-4 py-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Link
-                              href={`/assets/${asset.id}`}
-                              className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
-                            >
-                              View
-                            </Link>
-                          </div>
-                        </td>
+
+              {recentAssets.length === 0 ? (
+                <div className="mt-6 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-sm text-slate-500">
+                  No assets are available yet. Add the first record from the asset dashboard when you are ready.
+                </div>
+              ) : (
+                <div className="mt-6 overflow-x-auto">
+                  <table className="print-table min-w-full text-sm">
+                    <thead className="border-b border-slate-200 bg-slate-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-medium text-slate-600">Tag</th>
+                        <th className="px-4 py-3 text-left font-medium text-slate-600">Type</th>
+                        <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
+                        <th className="px-4 py-3 text-left font-medium text-slate-600">Updated</th>
+                        <th className="print-hide px-4 py-3 text-left font-medium text-slate-600">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {recentAssets.map(asset => (
+                        <tr key={asset.id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 font-mono text-slate-900">{asset.asset_tag ?? '-'}</td>
+                          <td className="px-4 py-3 text-slate-600">{asset.category ?? 'Other'}</td>
+                          <td className="px-4 py-3 text-slate-600">{asset.status ?? 'UNKNOWN'}</td>
+                          <td className="px-4 py-3 text-slate-600">{formatRelativeDate(asset.updated_at)}</td>
+                          <td className="print-hide px-4 py-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Link
+                                href={`/assets/${asset.id}`}
+                                className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
+                              >
+                                View
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </div>
 
           <section className="print-hide rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
@@ -252,4 +342,8 @@ export default async function DashboardPage() {
       </section>
     </AppShell>
   )
+}
+
+function statsCount(assetStatuses: string[], targetStatus: AssetStatus) {
+  return assetStatuses.filter(status => status === targetStatus).length
 }

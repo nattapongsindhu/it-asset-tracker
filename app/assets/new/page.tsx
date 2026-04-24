@@ -6,6 +6,10 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseAdmin } from '@/lib/supabase/session'
 import type { AssetUserOption } from '@/types/app'
 
+function getProfileLabel(email: string | null | undefined, fallback = 'Unknown user') {
+  return email?.trim() || fallback
+}
+
 export default async function NewAssetPage() {
   const user = await requireSupabaseAdmin('/assets')
   const supabase = createSupabaseServerClient()
@@ -16,12 +20,13 @@ export default async function NewAssetPage() {
     const { data: profileRows } = await supabase
       .from('profiles')
       .select('id, email')
+      .not('email', 'is', null)
       .order('email')
 
     users = (profileRows ?? []).map(profile => ({
-      email: profile.email ?? '',
+      email: getProfileLabel(profile.email, ''),
       id: profile.id,
-      name: profile.email ?? 'Unknown user',
+      name: getProfileLabel(profile.email),
     }))
   } catch {
     users = []

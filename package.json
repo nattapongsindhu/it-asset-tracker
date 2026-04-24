@@ -10,6 +10,7 @@
     "generate:manual": "tsx scripts/generate-manual.ts"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.8",
     "lucide-react": "^1.8.0",

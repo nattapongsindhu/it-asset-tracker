@@ -53,7 +53,7 @@ export function LoginForm({ nextPath }: Props) {
         </p>
         <h1 className="mt-2 text-2xl font-semibold text-slate-900">Access the asset workspace</h1>
         <p className="mt-3 text-sm leading-6 text-slate-500">
-          Use email and password for direct access, or request a magic link for a one-time sign-in.
+          Sign in with your company email and password to continue into the workspace.
         </p>
       </div>
 
@@ -100,12 +100,17 @@ export function LoginForm({ nextPath }: Props) {
           disabled={isPasswordLoading}
           className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isPasswordLoading ? 'Signing in...' : 'Sign in with Password'}
+          {isPasswordLoading ? 'Signing in...' : 'Sign in'}
         </button>
       </form>
 
-      <div className="mt-6 border-t border-slate-200 pt-5 text-center">
-        <MagicLinkModal defaultEmail={email} nextPath={nextPath} />
+      <div className="mt-6 border-t border-slate-200 pt-5">
+        <p className="text-center text-sm text-slate-500">
+          Need a one-time sign-in link instead?
+        </p>
+        <div className="mt-4 flex justify-center">
+          <MagicLinkModal defaultEmail={email} nextPath={nextPath} />
+        </div>
       </div>
     </div>
   )

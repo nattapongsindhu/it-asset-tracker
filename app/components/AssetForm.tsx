@@ -1,14 +1,17 @@
 'use client'
+import { useState } from 'react'
 import { useFormState } from 'react-dom'
 import { Save } from 'lucide-react'
-import type { AssetRecord, AssetUserOption } from '@/types/app'
+import type { AssetRecord, AssetStatus, AssetUserOption } from '@/types/app'
 
-const STATUSES = [
+const STATUS_OPTIONS: Array<{ value: AssetStatus; label: string }> = [
   { value: 'IN_STOCK', label: 'In Stock' },
   { value: 'ASSIGNED', label: 'Assigned' },
   { value: 'IN_REPAIR', label: 'In Repair' },
   { value: 'RETIRED', label: 'Retired' },
 ]
+
+const MANUAL_STATUS_OPTIONS = STATUS_OPTIONS.filter(status => status.value !== 'ASSIGNED')
 
 const TYPES = ['Laptop', 'Desktop', 'Monitor', 'Keyboard', 'Mouse', 'Headset', 'Phone', 'Tablet', 'Other']
 
@@ -30,10 +33,20 @@ export function AssetForm({
   users,
 }: Props) {
   const [state, formAction] = useFormState(action, undefined)
+  const [assignedUserId, setAssignedUserId] = useState(asset?.assignedUserId ?? '')
+  const [manualStatus, setManualStatus] = useState<AssetStatus>(
+    asset?.status === 'IN_REPAIR' || asset?.status === 'RETIRED' ? asset.status : 'IN_STOCK'
+  )
 
   const warrantyValue = asset?.warrantyExpiry
     ? new Date(asset.warrantyExpiry).toISOString().slice(0, 10)
     : ''
+  const hadInitialAssignment = Boolean(asset?.assignedUserId)
+  const isAssigned = assignedUserId.trim().length > 0
+  const isReturningToStock = hadInitialAssignment && !isAssigned
+  const effectiveStatus: AssetStatus = isAssigned ? 'ASSIGNED' : isReturningToStock ? 'IN_STOCK' : manualStatus
+  const autoManagedStatus = isAssigned || isReturningToStock
+  const statusOptions = autoManagedStatus ? STATUS_OPTIONS : MANUAL_STATUS_OPTIONS
 
   return (
     <form action={formAction} className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm flex flex-col gap-5">
@@ -58,29 +71,48 @@ export function AssetForm({
         <Field label="Brand *" name="brand" defaultValue={asset?.brand} required />
         <Field label="Model *" name="model" defaultValue={asset?.model} required />
         <Field label="Serial Number" name="serialNumber" defaultValue={asset?.serialNumber ?? ''} />
+        <input type="hidden" name="status" value={effectiveStatus} />
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Status *</label>
           <select
-            name="status"
-            defaultValue={asset?.status ?? 'IN_STOCK'}
-            required
+            value={autoManagedStatus ? effectiveStatus : manualStatus}
+            onChange={e => setManualStatus(e.target.value as AssetStatus)}
+            disabled={autoManagedStatus}
             className="w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
           >
-            {STATUSES.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}
+            {statusOptions.map(status => (
+              <option key={status.value} value={status.value}>
+                {status.label}
+              </option>
+            ))}
           </select>
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            {isAssigned
+              ? 'Selecting an employee saves this asset as Assigned automatically.'
+              : isReturningToStock
+                ? 'Clearing the assignee returns this asset to In Stock on save.'
+                : 'Use status for stock, repair, or retirement when the asset is not assigned.'}
+          </p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Assign To</label>
           <select
             name="assignedUserId"
-            defaultValue={asset?.assignedUserId ?? ''}
+            value={assignedUserId}
+            onChange={e => setAssignedUserId(e.target.value)}
             className="w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
           >
             <option value="">Unassigned</option>
             {users.map(user => (
-              <option key={user.id} value={user.id}>{user.name} ({user.email})</option>
+              <option key={user.id} value={user.id}>
+                {user.name} ({user.email})
+              </option>
             ))}
           </select>
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            Choose a real employee from the profiles directory. Removing the assignee is treated as
+            returning the asset.
+          </p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Warranty Expiry</label>
