@@ -1,4 +1,5 @@
 'use server'
+
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -9,6 +10,7 @@ import type { AssetStatus } from '@/types/app'
 
 type ActionState = { error?: string } | undefined
 export type BulkActionState = { error?: string; message?: string } | undefined
+export type AssignmentActionState = { error?: string; message?: string } | undefined
 type SupabaseClient = ReturnType<typeof createSupabaseServerClient>
 
 const STATUSES = ['IN_STOCK', 'ASSIGNED', 'IN_REPAIR', 'RETIRED'] as const
@@ -25,9 +27,14 @@ const assetSchema = z.object({
   warrantyExpiry: z.string().optional(),
   notes: z.string().max(2000).trim().optional(),
 })
+
 const bulkAssetSchema = z.object({
   assetIds: z.array(z.string().min(1)).min(1),
   status: z.enum(BULK_STATUSES),
+})
+
+const assignAssetSchema = z.object({
+  assignedUserId: z.string().min(1).trim(),
 })
 
 type AssetFormInput = z.infer<typeof assetSchema>
@@ -64,6 +71,14 @@ type BulkAssetRow = {
   id: string
   status: AssetStatus | null
 }
+type AssignmentRpcResult = {
+  action?: string | null
+  asset_id?: string | null
+  assignment_id?: string | null
+  previous_user_id?: string | null
+  status?: AssetStatus | null
+  user_id?: string | null
+}
 
 function normalizeOptionalValue(value: string | undefined) {
   return value && value.trim().length > 0 ? value.trim() : null
@@ -75,6 +90,10 @@ function normalizeDateValue(value: string | null | undefined) {
 
 function buildAssetName(brand: string, model: string) {
   return `${brand} ${model}`.trim()
+}
+
+function buildManualStatus(requestedStatus: AssetStatus): AssetStatus {
+  return requestedStatus === 'ASSIGNED' ? 'IN_STOCK' : requestedStatus
 }
 
 function buildStatus(
@@ -90,17 +109,49 @@ function buildStatus(
     return 'IN_STOCK'
   }
 
-  return requestedStatus === 'ASSIGNED' ? 'IN_STOCK' : requestedStatus
-}
-
-function formatProfileLabel(profile: ProfileRow | undefined, fallbackId?: string | null) {
-  return profile?.email?.trim() || fallbackId || 'Unknown user'
+  return buildManualStatus(requestedStatus)
 }
 
 function uniqueIds(values: Array<string | null | undefined>) {
   return Array.from(
     new Set(values.filter((value): value is string => typeof value === 'string' && value.length > 0))
   )
+}
+
+function mapRpcError(message: string | undefined) {
+  if (!message) {
+    return 'Unable to complete the assignment workflow right now.'
+  }
+
+  if (message.includes('Could not find the function')) {
+    return 'Phase 2 assignment migration is not applied in Supabase yet.'
+  }
+
+  if (message.includes('ACTOR_NOT_ADMIN')) {
+    return 'Only admins can manage asset assignment.'
+  }
+
+  if (message.includes('ASSET_NOT_FOUND')) {
+    return 'Asset not found.'
+  }
+
+  if (message.includes('PROFILE_NOT_FOUND')) {
+    return 'Assigned user was not found in employee profiles.'
+  }
+
+  if (message.includes('ASSET_NOT_ASSIGNABLE')) {
+    return 'Only in-stock assets can move into the In Use assignment workflow.'
+  }
+
+  return message
+}
+
+function parseAssignmentRpcResult(data: unknown): AssignmentRpcResult | null {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return null
+  }
+
+  return data as AssignmentRpcResult
 }
 
 async function loadProfilesById(supabase: SupabaseClient, ids: string[]) {
@@ -117,86 +168,49 @@ async function loadProfilesById(supabase: SupabaseClient, ids: string[]) {
   return new Map((data ?? []).map(profile => [profile.id, profile]))
 }
 
-async function logAssignmentAuditChange({
+async function invokeAssignAssetRpc({
   assetId,
-  assetTag,
-  bulk = false,
-  nextAssignedUserId,
-  nextStatus,
-  previousAssignedUserId,
-  previousStatus,
-  profilesById,
+  assignedUserId,
+  supabase,
   userId,
 }: {
   assetId: string
-  assetTag: string | null
-  bulk?: boolean
-  nextAssignedUserId: string | null
-  nextStatus: AssetStatus
-  previousAssignedUserId: string | null
-  previousStatus: AssetStatus | null
-  profilesById: Map<string, ProfileRow>
+  assignedUserId: string
+  supabase: SupabaseClient
   userId: string
 }) {
-  if (previousAssignedUserId === nextAssignedUserId) {
-    return
+  const { data, error } = await supabase.rpc('assign_asset_to_user', {
+    p_actor_id: userId,
+    p_asset_id: assetId,
+    p_user_id: assignedUserId,
+  })
+
+  if (error) {
+    return { data: null, error: mapRpcError(error.message) }
   }
 
-  const baseDetail = {
-    asset_tag: assetTag ?? assetId,
-    status: nextStatus,
-    ...(previousStatus ? { previous_status: previousStatus } : {}),
-    ...(bulk ? { bulk: true } : {}),
+  return { data: parseAssignmentRpcResult(data), error: undefined }
+}
+
+async function invokeReturnAssetRpc({
+  assetId,
+  supabase,
+  userId,
+}: {
+  assetId: string
+  supabase: SupabaseClient
+  userId: string
+}) {
+  const { data, error } = await supabase.rpc('return_asset_to_stock', {
+    p_actor_id: userId,
+    p_asset_id: assetId,
+  })
+
+  if (error) {
+    return { data: null, error: mapRpcError(error.message) }
   }
 
-  if (!previousAssignedUserId && nextAssignedUserId) {
-    await logAudit({
-      action: 'ASSET_ASSIGNED',
-      detail: {
-        ...baseDetail,
-        assigned_to: formatProfileLabel(profilesById.get(nextAssignedUserId), nextAssignedUserId),
-        assigned_to_id: nextAssignedUserId,
-      },
-      entityId: assetId,
-      entityType: 'asset',
-      userId,
-    })
-    return
-  }
-
-  if (previousAssignedUserId && !nextAssignedUserId) {
-    await logAudit({
-      action: 'ASSET_UNASSIGNED',
-      detail: {
-        ...baseDetail,
-        unassigned_from: formatProfileLabel(
-          profilesById.get(previousAssignedUserId),
-          previousAssignedUserId
-        ),
-        unassigned_from_id: previousAssignedUserId,
-      },
-      entityId: assetId,
-      entityType: 'asset',
-      userId,
-    })
-    return
-  }
-
-  if (previousAssignedUserId && nextAssignedUserId) {
-    await logAudit({
-      action: 'ASSET_REASSIGNED',
-      detail: {
-        ...baseDetail,
-        from_user: formatProfileLabel(profilesById.get(previousAssignedUserId), previousAssignedUserId),
-        from_user_id: previousAssignedUserId,
-        to_user: formatProfileLabel(profilesById.get(nextAssignedUserId), nextAssignedUserId),
-        to_user_id: nextAssignedUserId,
-      },
-      entityId: assetId,
-      entityType: 'asset',
-      userId,
-    })
-  }
+  return { data: parseAssignmentRpcResult(data), error: undefined }
 }
 
 async function logAssetUpdatedEvent({
@@ -277,7 +291,7 @@ function getChangedFields(previous: AssetSnapshot, next: AssetWritePayload) {
   return changedFields
 }
 
-function buildAssetPayload(
+function buildFinalAssetPayload(
   input: AssetFormInput,
   previousAssignedUserId: string | null
 ): AssetWritePayload {
@@ -293,6 +307,24 @@ function buildAssetPayload(
     notes: normalizeOptionalValue(input.notes),
     serial_number: normalizeOptionalValue(input.serialNumber),
     status: buildStatus(input.status, previousAssignedUserId, nextAssignedUserId),
+    warranty_expiry: normalizeOptionalValue(input.warrantyExpiry),
+  }
+}
+
+function buildDirectAssetPayload(
+  input: AssetFormInput,
+  currentAssignedUserId: string | null
+): AssetWritePayload {
+  return {
+    asset_tag: input.assetTag,
+    assigned_user_id: currentAssignedUserId,
+    brand: input.brand,
+    category: input.type,
+    model: input.model,
+    name: buildAssetName(input.brand, input.model),
+    notes: normalizeOptionalValue(input.notes),
+    serial_number: normalizeOptionalValue(input.serialNumber),
+    status: currentAssignedUserId ? 'ASSIGNED' : buildManualStatus(input.status),
     warranty_expiry: normalizeOptionalValue(input.warrantyExpiry),
   }
 }
@@ -331,21 +363,22 @@ export async function createAsset(_state: ActionState, formData: FormData): Prom
     return { error: 'Invalid input. Check all required fields.' }
   }
 
-  const payload = buildAssetPayload(parsed.data, null)
-  const profilesById = await loadProfilesById(supabase, uniqueIds([payload.assigned_user_id]))
+  const finalPayload = buildFinalAssetPayload(parsed.data, null)
+  const desiredAssignedUserId = finalPayload.assigned_user_id
+  const profilesById = await loadProfilesById(supabase, uniqueIds([desiredAssignedUserId]))
 
   if (!profilesById) {
     return { error: 'Unable to verify the assigned user right now.' }
   }
 
-  if (payload.assigned_user_id && !profilesById.has(payload.assigned_user_id)) {
+  if (desiredAssignedUserId && !profilesById.has(desiredAssignedUserId)) {
     return { error: 'Assigned user was not found in employee profiles.' }
   }
 
   const { data, error } = await supabase
     .from('assets')
     .insert({
-      ...payload,
+      ...buildDirectAssetPayload(parsed.data, null),
       created_by: user.id,
     })
     .select('id, asset_tag')
@@ -355,22 +388,25 @@ export async function createAsset(_state: ActionState, formData: FormData): Prom
     return { error: error?.message ?? 'Unable to create the asset right now.' }
   }
 
+  if (desiredAssignedUserId) {
+    const rpcResult = await invokeAssignAssetRpc({
+      assetId: data.id,
+      assignedUserId: desiredAssignedUserId,
+      supabase,
+      userId: user.id,
+    })
+
+    if (rpcResult.error) {
+      await supabase.from('assets').delete().eq('id', data.id)
+      return { error: rpcResult.error }
+    }
+  }
+
   await logAudit({
     action: 'ASSET_CREATED',
-    detail: { asset_tag: data.asset_tag, status: payload.status },
+    detail: { asset_tag: data.asset_tag, status: finalPayload.status },
     entityId: data.id,
     entityType: 'asset',
-    userId: user.id,
-  })
-
-  await logAssignmentAuditChange({
-    assetId: data.id,
-    assetTag: data.asset_tag,
-    nextAssignedUserId: payload.assigned_user_id,
-    nextStatus: payload.status,
-    previousAssignedUserId: null,
-    previousStatus: null,
-    profilesById,
     userId: user.id,
   })
 
@@ -416,67 +452,148 @@ export async function updateAsset(id: string, _state: ActionState, formData: For
     return { error: 'Asset not found.' }
   }
 
-  const payload = buildAssetPayload(parsed.data, currentAsset.assigned_user_id)
-  const profilesById = await loadProfilesById(
-    supabase,
-    uniqueIds([currentAsset.assigned_user_id, payload.assigned_user_id])
-  )
+  const finalPayload = buildFinalAssetPayload(parsed.data, currentAsset.assigned_user_id)
+  const desiredAssignedUserId = finalPayload.assigned_user_id
+  const profilesById = await loadProfilesById(supabase, uniqueIds([desiredAssignedUserId]))
 
   if (!profilesById) {
     return { error: 'Unable to verify the assigned user right now.' }
   }
 
-  if (payload.assigned_user_id && !profilesById.has(payload.assigned_user_id)) {
+  if (desiredAssignedUserId && !profilesById.has(desiredAssignedUserId)) {
     return { error: 'Assigned user was not found in employee profiles.' }
   }
 
-  const changedFields = getChangedFields(currentAsset, payload)
+  const changedFields = getChangedFields(currentAsset, finalPayload)
 
   if (changedFields.length === 0) {
     redirect(`/assets/${id}`)
   }
 
-  const { data, error } = await supabase
-    .from('assets')
-    .update(payload)
-    .eq('id', id)
-    .select('id, asset_tag')
-    .single()
-
-  if (error || !data) {
-    return { error: error?.message ?? 'Unable to update the asset right now.' }
-  }
-
-  const assignmentChanged = currentAsset.assigned_user_id !== payload.assigned_user_id
-
-  if (assignmentChanged) {
-    await logAssignmentAuditChange({
-      assetId: data.id,
-      assetTag: data.asset_tag,
-      nextAssignedUserId: payload.assigned_user_id,
-      nextStatus: payload.status,
-      previousAssignedUserId: currentAsset.assigned_user_id,
-      previousStatus: currentAsset.status,
-      profilesById,
-      userId: user.id,
-    })
-  }
-
+  const assignmentChanged = currentAsset.assigned_user_id !== finalPayload.assigned_user_id
   const nonAssignmentChanges = changedFields.filter(
     field => field !== 'assigned_to' && !(field === 'status' && assignmentChanged)
   )
 
+  if (nonAssignmentChanges.length > 0) {
+    const { error } = await supabase
+      .from('assets')
+      .update(buildDirectAssetPayload(parsed.data, currentAsset.assigned_user_id))
+      .eq('id', id)
+
+    if (error) {
+      return { error: error.message ?? 'Unable to update the asset right now.' }
+    }
+  }
+
+  if (assignmentChanged) {
+    const rpcResult = desiredAssignedUserId
+      ? await invokeAssignAssetRpc({
+          assetId: id,
+          assignedUserId: desiredAssignedUserId,
+          supabase,
+          userId: user.id,
+        })
+      : await invokeReturnAssetRpc({
+          assetId: id,
+          supabase,
+          userId: user.id,
+        })
+
+    if (rpcResult.error) {
+      return { error: rpcResult.error }
+    }
+  }
+
   await logAssetUpdatedEvent({
-    assetId: data.id,
-    assetTag: data.asset_tag,
+    assetId: id,
+    assetTag: finalPayload.asset_tag,
     changedFields: nonAssignmentChanges,
-    nextStatus: payload.status,
+    nextStatus: finalPayload.status,
     previousStatus: currentAsset.status,
     userId: user.id,
   })
 
-  revalidateAssetViews(data.id)
-  redirect(`/assets/${data.id}`)
+  revalidateAssetViews(id)
+  redirect(`/assets/${id}`)
+}
+
+export async function assignAssetToUser(
+  assetId: string,
+  _state: AssignmentActionState,
+  formData: FormData
+): Promise<AssignmentActionState> {
+  const user = await requireSupabaseAdmin(`/assets/${assetId}`)
+  const supabase = createSupabaseServerClient()
+  const raw = {
+    assignedUserId: formData.get('assignedUserId'),
+  }
+  const parsed = assignAssetSchema.safeParse(raw)
+
+  if (!parsed.success) {
+    return { error: 'Please select an employee before assigning the asset.' }
+  }
+
+  const assignedUserId = parsed.data.assignedUserId.trim()
+  const profilesById = await loadProfilesById(supabase, uniqueIds([assignedUserId]))
+
+  if (!profilesById) {
+    return { error: 'Unable to verify the assigned user right now.' }
+  }
+
+  if (!profilesById.has(assignedUserId)) {
+    return { error: 'Assigned user was not found in employee profiles.' }
+  }
+
+  const rpcResult = await invokeAssignAssetRpc({
+    assetId,
+    assignedUserId,
+    supabase,
+    userId: user.id,
+  })
+
+  if (rpcResult.error) {
+    return { error: rpcResult.error }
+  }
+
+  revalidateAssetViews(assetId)
+  return {
+    message:
+      rpcResult.data?.action === 'ASSET_REASSIGNED'
+        ? 'Asset reassigned successfully.'
+        : rpcResult.data?.action === 'UNCHANGED'
+          ? 'This asset is already assigned to that employee.'
+          : 'Asset moved to the In Use workflow successfully.',
+  }
+}
+
+export async function returnAssetToStock(
+  assetId: string,
+  _state: AssignmentActionState,
+  _formData: FormData
+): Promise<AssignmentActionState> {
+  void _state
+  void _formData
+
+  const user = await requireSupabaseAdmin(`/assets/${assetId}`)
+  const supabase = createSupabaseServerClient()
+  const rpcResult = await invokeReturnAssetRpc({
+    assetId,
+    supabase,
+    userId: user.id,
+  })
+
+  if (rpcResult.error) {
+    return { error: rpcResult.error }
+  }
+
+  revalidateAssetViews(assetId)
+  return {
+    message:
+      rpcResult.data?.action === 'UNCHANGED'
+        ? 'This asset is already out of the assignment workflow.'
+        : 'Asset returned to stock successfully.',
+  }
 }
 
 export async function bulkUpdateAssetStatus(
@@ -517,53 +634,56 @@ export async function bulkUpdateAssetStatus(
     return { message: 'Selected assets already match the requested status.' }
   }
 
-  const profilesById = await loadProfilesById(
-    supabase,
-    uniqueIds(assetsToUpdate.map(asset => asset.assigned_user_id))
-  )
-
-  if (!profilesById) {
-    return { error: 'Unable to load assigned employee profiles right now.' }
-  }
-
-  const { error: updateError } = await supabase
-    .from('assets')
-    .update({
-      assigned_user_id: null,
-      status: parsed.data.status,
-    })
-    .in(
-      'id',
-      assetsToUpdate.map(asset => asset.id)
-    )
-
-  if (updateError) {
-    return { error: updateError.message ?? 'Unable to apply the bulk action right now.' }
-  }
-
   for (const asset of assetsToUpdate) {
-    await logAssignmentAuditChange({
+    if (!asset.assigned_user_id) {
+      continue
+    }
+
+    const rpcResult = await invokeReturnAssetRpc({
       assetId: asset.id,
-      assetTag: asset.asset_tag,
-      bulk: true,
-      nextAssignedUserId: null,
-      nextStatus: parsed.data.status,
-      previousAssignedUserId: asset.assigned_user_id,
-      previousStatus: asset.status,
-      profilesById,
+      supabase,
       userId: user.id,
     })
 
-    const changedFields = [
-      ...(asset.assigned_user_id ? ['assigned_to'] : []),
-      ...((asset.status ?? 'IN_STOCK') !== parsed.data.status ? ['status'] : []),
-    ]
+    if (rpcResult.error) {
+      return { error: rpcResult.error }
+    }
+  }
+
+  const statusUpdateIds = assetsToUpdate
+    .filter(asset => {
+      const currentStatus = asset.status ?? 'IN_STOCK'
+
+      if (parsed.data.status === 'IN_STOCK') {
+        return asset.assigned_user_id === null && currentStatus !== 'IN_STOCK'
+      }
+
+      return currentStatus !== parsed.data.status || asset.assigned_user_id !== null
+    })
+    .map(asset => asset.id)
+
+  if (statusUpdateIds.length > 0) {
+    const { error: updateError } = await supabase
+      .from('assets')
+      .update({
+        status: parsed.data.status,
+      })
+      .in('id', statusUpdateIds)
+
+    if (updateError) {
+      return { error: updateError.message ?? 'Unable to apply the bulk action right now.' }
+    }
+  }
+
+  for (const asset of assetsToUpdate) {
+    const changedFields =
+      (asset.status ?? 'IN_STOCK') !== parsed.data.status ? ['status'] : []
 
     await logAssetUpdatedEvent({
       assetId: asset.id,
       assetTag: asset.asset_tag,
       bulk: true,
-      changedFields: changedFields.filter(field => field !== 'assigned_to'),
+      changedFields,
       nextStatus: parsed.data.status,
       previousStatus: asset.status,
       userId: user.id,
