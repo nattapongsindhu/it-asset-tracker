@@ -1,6 +1,7 @@
 export type AppRole = 'ADMIN' | 'STAFF'
 
 export type AssetStatus = 'IN_STOCK' | 'ASSIGNED' | 'IN_REPAIR' | 'RETIRED'
+export type AssetAssignmentStatus = 'ASSIGNED' | 'RETURNED'
 
 export type AppSessionUser = {
   id: string
@@ -29,6 +30,18 @@ export type AssetRecord = {
   notes?: string | null
   createdAt?: string | Date | null
   updatedAt?: string | Date | null
+}
+
+export type AssetAssignmentRecord = {
+  id: string
+  assetId: string
+  status: AssetAssignmentStatus
+  assignedAt: string | Date
+  returnedAt?: string | Date | null
+  note?: string | null
+  user?: AssetUserOption | null
+  assignedBy?: AssetUserOption | null
+  returnedBy?: AssetUserOption | null
 }
 
 export type AuditLogRecord = {
