@@ -2,12 +2,12 @@
 import { useState } from 'react'
 import { useFormState } from 'react-dom'
 import { Save } from 'lucide-react'
-import type { AssetRecord, AssetStatus, AssetUserOption } from '@/types/app'
+import type { AssetLocationOption, AssetRecord, AssetStatus, AssetUserOption } from '@/types/app'
 
 const STATUS_OPTIONS: Array<{ value: AssetStatus; label: string }> = [
   { value: 'IN_STOCK', label: 'In Stock' },
-  { value: 'ASSIGNED', label: 'Assigned' },
-  { value: 'IN_REPAIR', label: 'In Repair' },
+  { value: 'ASSIGNED', label: 'In Use' },
+  { value: 'IN_REPAIR', label: 'Under Repair' },
   { value: 'RETIRED', label: 'Retired' },
 ]
 
@@ -21,6 +21,7 @@ type Props = {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
   asset?: AssetRecord
   cancelHref?: string
+  locations: AssetLocationOption[]
   submitLabel?: string
   users: AssetUserOption[]
 }
@@ -29,6 +30,7 @@ export function AssetForm({
   action,
   asset,
   cancelHref = '/dashboard/assets',
+  locations,
   submitLabel = 'Save Asset',
   users,
 }: Props) {
@@ -112,6 +114,24 @@ export function AssetForm({
           <p className="mt-2 text-xs leading-5 text-slate-500">
             Choose a real employee from the profiles directory. Removing the assignee is treated as
             returning the asset.
+          </p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Current Location</label>
+          <select
+            name="locationId"
+            defaultValue={asset?.locationId ?? ''}
+            className="w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+          >
+            <option value="">No location set</option>
+            {locations.map(location => (
+              <option key={location.id} value={location.id}>
+                {location.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            Track which building, floor, or handoff point currently holds this asset.
           </p>
         </div>
         <div>

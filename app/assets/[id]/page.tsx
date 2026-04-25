@@ -3,17 +3,21 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Pencil } from 'lucide-react'
 import { AppShell } from '@/app/components/AppShell'
+import { AssetRepairRequestButton } from '@/app/components/AssetRepairRequestButton'
 import { LocalizedDateTime } from '@/app/components/LocalizedDateTime'
+import { formatLocationLabel, mapLocationOption, type AssetLocationRow } from '@/lib/locations'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseUser } from '@/lib/supabase/session'
-import type { AssetAssignmentRecord, AssetUserOption } from '@/types/app'
-import { DeleteAssetButton } from './DeleteAssetButton'
+import type { AssetAssignmentRecord, AssetLocationOption, AssetStatus, AssetUserOption } from '@/types/app'
 import { AssetAssignmentPanel } from './AssetAssignmentPanel'
+import { AssetLifecyclePanel } from './AssetLifecyclePanel'
+import { AssetLocationPanel } from './AssetLocationPanel'
+import { DeleteAssetButton } from './DeleteAssetButton'
 
 const STATUS_LABELS: Record<string, string> = {
   IN_STOCK: 'In Stock',
-  ASSIGNED: 'Assigned',
-  IN_REPAIR: 'In Repair',
+  ASSIGNED: 'In Use',
+  IN_REPAIR: 'Under Repair',
   RETIRED: 'Retired',
 }
 
@@ -31,7 +35,8 @@ type ProfileLookupRow = {
 
 type AssignmentHistoryRow = {
   assigned_at: string
-  asset_id: string
+  asset_id: string | null
+  asset_tag_snapshot: string | null
   assigned_by_profile: ProfileLookupRow[] | ProfileLookupRow | null
   id: string
   note: string | null
@@ -39,6 +44,23 @@ type AssignmentHistoryRow = {
   returned_by_profile: ProfileLookupRow[] | ProfileLookupRow | null
   status: string | null
   user: ProfileLookupRow[] | ProfileLookupRow | null
+}
+
+type AssetDetail = {
+  asset_tag: string | null
+  assigned_user_id: string | null
+  brand: string | null
+  category: string | null
+  created_at: string | null
+  id: string
+  location: AssetLocationRow[] | AssetLocationRow | null
+  location_id: string | null
+  model: string | null
+  notes: string | null
+  serial_number: string | null
+  status: AssetStatus | null
+  updated_at: string | null
+  warranty_expiry: string | null
 }
 
 function formatValue(value: string | null | undefined) {
@@ -51,6 +73,14 @@ function unwrapProfile(profile: ProfileLookupRow[] | ProfileLookupRow | null | u
   }
 
   return profile ?? null
+}
+
+function unwrapLocation(location: AssetLocationRow[] | AssetLocationRow | null | undefined) {
+  if (Array.isArray(location)) {
+    return location[0] ?? null
+  }
+
+  return location ?? null
 }
 
 function getProfileLabel(
@@ -75,19 +105,9 @@ function mapProfile(profile: ProfileLookupRow[] | ProfileLookupRow | null | unde
 }
 
 function buildDetailRows(
-  asset: {
-    asset_tag: string | null
-    brand: string | null
-    category: string | null
-    created_at: string | null
-    model: string | null
-    notes: string | null
-    serial_number: string | null
-    status: string | null
-    updated_at: string | null
-    warranty_expiry: string | null
-  },
-  assignedUserName: string
+  asset: AssetDetail,
+  assignedUserName: string,
+  currentLocationLabel: string
 ): DetailRow[] {
   return [
     { label: 'Asset Tag', value: formatValue(asset.asset_tag) },
@@ -97,6 +117,7 @@ function buildDetailRows(
     { label: 'Serial Number', value: formatValue(asset.serial_number) },
     { label: 'Status', value: STATUS_LABELS[asset.status ?? ''] ?? asset.status ?? '-' },
     { label: 'Assigned To', value: assignedUserName },
+    { label: 'Current Location', value: currentLocationLabel },
     {
       label: 'Warranty Expiry',
       value: <LocalizedDateTime value={asset.warranty_expiry} />,
@@ -127,6 +148,7 @@ function mapAssignmentHistory(historyRows: unknown[]): AssetAssignmentRecord[] {
 
     return {
       assetId: row.asset_id,
+      assetTagSnapshot: row.asset_tag_snapshot,
       assignedAt: row.assigned_at,
       assignedBy: mapProfile(row.assigned_by_profile),
       id: row.id,
@@ -161,12 +183,16 @@ export default async function AssetDetailPage({ params }: Props) {
   const { data: asset } = await supabase
     .from('assets')
     .select(
-      'id, asset_tag, category, brand, model, serial_number, status, assigned_user_id, warranty_expiry, notes, created_at, updated_at'
+      'id, asset_tag, category, brand, model, serial_number, status, assigned_user_id, location_id, location:locations!assets_location_id_fkey(id, name, building, floor), warranty_expiry, notes, created_at, updated_at'
     )
     .eq('id', params.id)
     .maybeSingle()
 
   if (!asset) {
+    notFound()
+  }
+
+  if (!isAdmin && asset.assigned_user_id !== user.id) {
     notFound()
   }
 
@@ -185,19 +211,24 @@ export default async function AssetDetailPage({ params }: Props) {
   let users: AssetUserOption[] = []
   let assignmentHistory: AssetAssignmentRecord[] = []
   let assignmentHistoryReady = false
+  let locations: AssetLocationOption[] = []
 
   if (isAdmin) {
-    const [{ data: profileRows, error: profilesError }, { data: historyRows, error: historyError }] =
-      await Promise.all([
-        supabase.from('profiles').select('id, email').not('email', 'is', null).order('email'),
-        supabase
-          .from('asset_assignments')
-          .select(
-            'id, asset_id, status, assigned_at, returned_at, note, user:profiles!asset_assignments_user_id_fkey(id, email), assigned_by_profile:profiles!asset_assignments_assigned_by_fkey(id, email), returned_by_profile:profiles!asset_assignments_returned_by_fkey(id, email)'
-          )
-          .eq('asset_id', params.id)
-          .order('assigned_at', { ascending: false }),
-      ])
+    const [
+      { data: profileRows, error: profilesError },
+      { data: historyRows, error: historyError },
+      { data: locationRows, error: locationsError },
+    ] = await Promise.all([
+      supabase.from('profiles').select('id, email').not('email', 'is', null).order('email'),
+      supabase
+        .from('asset_assignments')
+        .select(
+          'id, asset_id, asset_tag_snapshot, status, assigned_at, returned_at, note, user:profiles!asset_assignments_user_id_fkey(id, email), assigned_by_profile:profiles!asset_assignments_assigned_by_fkey(id, email), returned_by_profile:profiles!asset_assignments_returned_by_fkey(id, email)'
+        )
+        .eq('asset_id', params.id)
+        .order('assigned_at', { ascending: false }),
+      supabase.from('locations').select('id, name, building, floor').order('name'),
+    ])
 
     if (!profilesError) {
       users = mapAssignableUsers(profileRows ?? [])
@@ -207,28 +238,35 @@ export default async function AssetDetailPage({ params }: Props) {
       assignmentHistoryReady = true
       assignmentHistory = mapAssignmentHistory((historyRows ?? []) as unknown[])
     }
+
+    if (!locationsError) {
+      locations = (locationRows ?? []).map(mapLocationOption)
+    }
   }
 
+  const currentLocation = unwrapLocation(asset.location)
+  const currentLocationLabel = formatLocationLabel(currentLocation, 'No location set')
   const assignmentSummary = getAssignmentSummary(asset.assigned_user_id, assignedUserName)
-  const rows = buildDetailRows(asset, assignedUserName)
+  const rows = buildDetailRows(asset as AssetDetail, assignedUserName, currentLocationLabel)
+  const currentPath = isAdmin ? '/dashboard/assets' : '/assets'
+  const backHref = isAdmin ? '/dashboard/assets' : '/assets'
 
   return (
-    <AppShell currentPath="/dashboard/assets" user={user}>
+    <AppShell currentPath={currentPath} user={user}>
       <section className="print-sheet mx-auto max-w-6xl">
         <div className="print-page-header mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <Link
-              href="/dashboard/assets"
+              href={backHref}
               className="print-hide text-sm font-medium text-slate-500 hover:text-slate-800"
             >
-              Back to assets
+              {isAdmin ? 'Back to assets' : 'Back to my assets'}
             </Link>
             <h1 className="mt-2 font-mono text-3xl font-semibold tracking-tight text-slate-900">
               {asset.asset_tag ?? params.id}
             </h1>
             <p className="print-hide mt-3 text-sm leading-7 text-slate-600">
-              Review the current asset record, assignment workflow, and timestamps in one compact
-              detail view.
+              Review the current asset record, operational workflow, and browser-local timestamps in one compact detail view.
             </p>
           </div>
 
@@ -346,17 +384,46 @@ export default async function AssetDetailPage({ params }: Props) {
             )}
           </div>
 
-          {isAdmin && (
-            <div className="print-hide">
-              <AssetAssignmentPanel
-                assetId={asset.id}
-                currentAssignedUserId={asset.assigned_user_id}
-                currentAssignedUserLabel={assignedUserName}
-                currentStatus={asset.status ?? 'IN_STOCK'}
-                users={users}
-              />
-            </div>
-          )}
+          <div className="print-hide space-y-6">
+            {isAdmin ? (
+              <>
+                <AssetAssignmentPanel
+                  assetId={asset.id}
+                  currentAssignedUserId={asset.assigned_user_id}
+                  currentAssignedUserLabel={assignedUserName}
+                  currentStatus={asset.status ?? 'IN_STOCK'}
+                  users={users}
+                />
+                <AssetLocationPanel
+                  assetId={asset.id}
+                  currentLocationId={asset.location_id}
+                  currentLocationLabel={currentLocationLabel}
+                  locations={locations}
+                />
+                <AssetLifecyclePanel assetId={asset.id} currentStatus={asset.status ?? 'IN_STOCK'} />
+              </>
+            ) : (
+              <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="border-b border-slate-100 pb-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Support</p>
+                  <h2 className="mt-2 text-xl font-semibold text-slate-900">Need repair help?</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Send a lightweight repair request to the admin team without changing the asset lifecycle yourself.
+                  </p>
+                </div>
+
+                <div className="mt-6">
+                  {asset.status === 'ASSIGNED' ? (
+                    <AssetRepairRequestButton assetId={asset.id} />
+                  ) : (
+                    <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                      Repair requests are available while this asset is actively assigned to you.
+                    </p>
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
         </div>
       </section>
     </AppShell>

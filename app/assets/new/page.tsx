@@ -2,9 +2,10 @@ import Link from 'next/link'
 import { AssetForm } from '@/app/components/AssetForm'
 import { createAsset } from '@/app/actions/assets'
 import { AppShell } from '@/app/components/AppShell'
+import { mapLocationOption } from '@/lib/locations'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseAdmin } from '@/lib/supabase/session'
-import type { AssetUserOption } from '@/types/app'
+import type { AssetLocationOption, AssetUserOption } from '@/types/app'
 
 function getProfileLabel(email: string | null | undefined, fallback = 'Unknown user') {
   return email?.trim() || fallback
@@ -15,21 +16,27 @@ export default async function NewAssetPage() {
   const supabase = createSupabaseServerClient()
 
   let users: AssetUserOption[] = []
+  let locations: AssetLocationOption[] = []
 
   try {
-    const { data: profileRows } = await supabase
-      .from('profiles')
-      .select('id, email')
-      .not('email', 'is', null)
-      .order('email')
+    const [{ data: profileRows }, { data: locationRows }] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, email')
+        .not('email', 'is', null)
+        .order('email'),
+      supabase.from('locations').select('id, name, building, floor').order('name'),
+    ])
 
     users = (profileRows ?? []).map(profile => ({
       email: getProfileLabel(profile.email, ''),
       id: profile.id,
       name: getProfileLabel(profile.email),
     }))
+    locations = (locationRows ?? []).map(mapLocationOption)
   } catch {
     users = []
+    locations = []
   }
 
   return (
@@ -47,7 +54,7 @@ export default async function NewAssetPage() {
           </div>
         </div>
 
-        <AssetForm action={createAsset} cancelHref="/dashboard/assets" users={users} />
+        <AssetForm action={createAsset} cancelHref="/dashboard/assets" locations={locations} users={users} />
       </section>
     </AppShell>
   )

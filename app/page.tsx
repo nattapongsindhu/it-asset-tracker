@@ -5,7 +5,7 @@ export default async function Home() {
   const user = await getSupabaseSessionUser()
 
   if (user) {
-    redirect('/dashboard')
+    redirect(user.role === 'ADMIN' ? '/dashboard' : '/assets')
   }
 
   redirect('/login')

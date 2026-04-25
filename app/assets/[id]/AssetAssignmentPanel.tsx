@@ -49,7 +49,7 @@ export function AssetAssignmentPanel({
       : currentStatus === 'IN_STOCK'
         ? 'In Stock'
         : currentStatus === 'IN_REPAIR'
-          ? 'In Repair'
+          ? 'Under Repair'
           : 'Retired'
 
   return (

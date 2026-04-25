@@ -9,8 +9,8 @@ import type { AssetRecord, AssetStatus } from '@/types/app'
 
 const STATUS_LABELS: Record<AssetStatus, string> = {
   IN_STOCK: 'In Stock',
-  ASSIGNED: 'Assigned',
-  IN_REPAIR: 'In Repair',
+  ASSIGNED: 'In Use',
+  IN_REPAIR: 'Under Repair',
   RETIRED: 'Retired',
 }
 
@@ -22,7 +22,7 @@ const STATUS_COLORS: Record<AssetStatus, string> = {
 }
 
 const BULK_STATUS_OPTIONS: Array<{ value: Exclude<AssetStatus, 'ASSIGNED'>; label: string }> = [
-  { value: 'IN_REPAIR', label: 'Mark In Repair' },
+  { value: 'IN_REPAIR', label: 'Mark Under Repair' },
   { value: 'RETIRED', label: 'Mark Retired' },
   { value: 'IN_STOCK', label: 'Return To Stock' },
 ]
@@ -57,6 +57,7 @@ function buildCsvValue(asset: AssetRecord) {
     asset.serialNumber ?? '',
     STATUS_LABELS[asset.status] ?? asset.status,
     asset.assignedUser?.name ?? 'Unassigned',
+    asset.location?.label ?? 'No location set',
     asset.warrantyExpiry ? formatDate(asset.warrantyExpiry) : '',
   ]
     .map(escapeCsvValue)
@@ -95,6 +96,7 @@ export function AssetTable({ action, assets, isAdmin }: Props) {
       'Serial Number',
       'Status',
       'Assigned To',
+      'Current Location',
       'Warranty Expiry',
     ]
       .map(escapeCsvValue)
@@ -199,6 +201,7 @@ export function AssetTable({ action, assets, isAdmin }: Props) {
               <th className="px-4 py-3 text-left font-medium text-slate-600">Brand / Model</th>
               <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
               <th className="px-4 py-3 text-left font-medium text-slate-600">Assigned To</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-600">Location</th>
               <th className="px-4 py-3 text-left font-medium text-slate-600">Warranty</th>
               <th className="print-hide px-4 py-3 text-left font-medium text-slate-600">Actions</th>
             </tr>
@@ -236,6 +239,7 @@ export function AssetTable({ action, assets, isAdmin }: Props) {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-slate-600">{asset.assignedUser?.name ?? 'Unassigned'}</td>
+                <td className="px-4 py-3 text-slate-600">{asset.location?.label ?? 'No location set'}</td>
                 <td className="px-4 py-3 text-slate-600">{formatDate(asset.warrantyExpiry)}</td>
                 <td className="print-hide px-4 py-3">
                   <div className="flex flex-wrap items-center gap-2">

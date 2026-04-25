@@ -1,22 +1,24 @@
 import Link from 'next/link'
-import { Boxes, Filter, Search, ShieldCheck, UserCircle2 } from 'lucide-react'
+import { Boxes, Filter, MapPin, Search, ShieldCheck, UserCircle2 } from 'lucide-react'
 import { bulkUpdateAssetStatus, createAsset } from '@/app/actions/assets'
 import { AppShell } from '@/app/components/AppShell'
+import { mapLocationOption, type AssetLocationRow } from '@/lib/locations'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { requireSupabaseUser } from '@/lib/supabase/session'
-import type { AssetRecord, AssetStatus, AssetUserOption } from '@/types/app'
+import { requireSupabaseAdmin } from '@/lib/supabase/session'
+import type { AssetLocationOption, AssetRecord, AssetStatus, AssetUserOption } from '@/types/app'
 import { AddAssetModal } from './AddAssetModal'
 import { AssetTable } from './AssetTable'
 
 const STATUS_LABELS: Record<AssetStatus, string> = {
   IN_STOCK: 'In Stock',
-  ASSIGNED: 'Assigned',
-  IN_REPAIR: 'In Repair',
+  ASSIGNED: 'In Use',
+  IN_REPAIR: 'Under Repair',
   RETIRED: 'Retired',
 }
 
 type Props = {
   searchParams?: {
+    location?: string | string[]
     new?: string | string[]
     q?: string | string[]
     status?: string | string[]
@@ -30,6 +32,8 @@ type AssetRow = {
   brand: string | null
   category: string | null
   id: string
+  location: AssetLocationRow[] | AssetLocationRow | null
+  location_id: string | null
   model: string | null
   serial_number: string | null
   status: AssetStatus | null
@@ -49,25 +53,34 @@ function getSingleValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
 }
 
+function unwrapLocation(location: AssetLocationRow[] | AssetLocationRow | null | undefined) {
+  if (Array.isArray(location)) {
+    return location[0] ?? null
+  }
+
+  return location ?? null
+}
+
 export default async function DashboardAssetsPage({ searchParams }: Props) {
-  const user = await requireSupabaseUser()
+  const user = await requireSupabaseAdmin('/assets')
   const supabase = createSupabaseServerClient()
-  const isAdmin = user.role === 'ADMIN'
   const q = getSingleValue(searchParams?.q)?.trim() ?? ''
   const status = getSingleValue(searchParams?.status)?.trim() ?? ''
   const type = getSingleValue(searchParams?.type)?.trim() ?? ''
+  const location = getSingleValue(searchParams?.location)?.trim() ?? ''
   const openByDefault = getSingleValue(searchParams?.new) === '1'
 
   let assets: AssetRecord[] = []
   let typeOptions: string[] = []
   let users: AssetUserOption[] = []
+  let locationOptions: AssetLocationOption[] = []
   let loadError = ''
 
   try {
     let assetQuery = supabase
       .from('assets')
       .select(
-        'id, asset_tag, category, brand, model, serial_number, status, assigned_user_id, warranty_expiry'
+        'id, asset_tag, category, brand, model, serial_number, status, assigned_user_id, warranty_expiry, location_id, location:locations!assets_location_id_fkey(id, name, building, floor)'
       )
       .order('asset_tag')
 
@@ -79,6 +92,10 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
       assetQuery = assetQuery.eq('category', type)
     }
 
+    if (location) {
+      assetQuery = assetQuery.eq('location_id', location)
+    }
+
     if (q) {
       const searchTerm = q.replace(/,/g, ' ')
       assetQuery = assetQuery.or(
@@ -86,14 +103,20 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
       )
     }
 
-    const [{ data: assetRows, error: assetError }, { data: typeRows, error: typeError }] =
-      await Promise.all([
-        assetQuery,
-        supabase.from('assets').select('category').order('category'),
-      ])
+    const [
+      { data: assetRows, error: assetError },
+      { data: typeRows, error: typeError },
+      { data: profileRows, error: profileListError },
+      { data: locationRows, error: locationError },
+    ] = await Promise.all([
+      assetQuery,
+      supabase.from('assets').select('category').order('category'),
+      supabase.from('profiles').select('id, email').not('email', 'is', null).order('email'),
+      supabase.from('locations').select('id, name, building, floor').order('name'),
+    ])
 
-    if (assetError || typeError) {
-      throw assetError ?? typeError
+    if (assetError || typeError || profileListError || locationError) {
+      throw assetError ?? typeError ?? profileListError ?? locationError
     }
 
     const assignedUserIds = Array.from(
@@ -121,6 +144,7 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
 
     assets = (assetRows ?? []).map((row: AssetRow) => {
       const assignedUser = row.assigned_user_id ? profilesById.get(row.assigned_user_id) : null
+      const locationValue = unwrapLocation(row.location)
 
       return {
         assetTag: row.asset_tag ?? '',
@@ -134,6 +158,12 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
         assignedUserId: row.assigned_user_id,
         brand: row.brand ?? '',
         id: row.id,
+        location: locationValue
+          ? {
+              ...mapLocationOption(locationValue),
+            }
+          : null,
+        locationId: row.location_id,
         model: row.model ?? '',
         serialNumber: row.serial_number,
         status: row.status ?? 'IN_STOCK',
@@ -150,23 +180,13 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
       )
     )
 
-    if (isAdmin) {
-      const { data: profileRows, error: profileListError } = await supabase
-        .from('profiles')
-        .select('id, email')
-        .not('email', 'is', null)
-        .order('email')
+    users = (profileRows ?? []).map((profile: ProfileRow) => ({
+      email: getProfileLabel(profile, ''),
+      id: profile.id,
+      name: getProfileLabel(profile),
+    }))
 
-      if (profileListError) {
-        throw profileListError
-      }
-
-      users = (profileRows ?? []).map((profile: ProfileRow) => ({
-        email: getProfileLabel(profile, ''),
-        id: profile.id,
-        name: getProfileLabel(profile),
-      }))
-    }
+    locationOptions = (locationRows ?? []).map(mapLocationOption)
   } catch {
     loadError = 'Unable to load assets right now.'
   }
@@ -186,14 +206,12 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
               Asset Dashboard
             </h1>
             <p className="print-hide mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-              Review inventory, print a clean A4 list, and keep asset records orderly from one workspace.
+              Review inventory, track where each asset lives, and keep lifecycle controls orderly from one workspace.
             </p>
           </div>
 
           <div className="print-hide flex flex-wrap items-center gap-3">
-            {isAdmin && (
-              <AddAssetModal action={createAsset} openByDefault={openByDefault} users={users} />
-            )}
+            <AddAssetModal action={createAsset} locations={locationOptions} openByDefault={openByDefault} users={users} />
           </div>
         </div>
 
@@ -240,13 +258,28 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
                   </option>
                 ))}
               </select>
+              <label className="relative block w-full sm:w-72">
+                <MapPin className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <select
+                  name="location"
+                  defaultValue={location}
+                  className="w-full rounded-2xl border border-slate-300 py-3 pl-11 pr-4 text-sm text-slate-700 outline-none transition focus:border-slate-900"
+                >
+                  <option value="">All locations</option>
+                  {locationOptions.map(option => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <button
                 type="submit"
                 className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
               >
                 Apply Filters
               </button>
-              {(q || status || type) && (
+              {(q || status || type || location) && (
                 <Link
                   href="/dashboard/assets"
                   className="self-center text-sm font-medium text-slate-500 hover:text-slate-800"
@@ -275,9 +308,7 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
                 Access posture
               </div>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                {isAdmin
-                  ? 'Admin controls are enabled, including modal-based asset creation and edit access.'
-                  : 'Staff view is read-first. Print remains available while management controls stay disabled.'}
+                Admin controls are enabled, including location moves, lifecycle actions, and assignment management.
               </p>
             </div>
           </div>
@@ -300,7 +331,7 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
           ) : assets.length === 0 ? (
             <p className="p-6 text-sm text-slate-500">No assets matched the current filters.</p>
           ) : (
-            <AssetTable action={bulkUpdateAssetStatus} assets={assets} isAdmin={isAdmin} />
+            <AssetTable action={bulkUpdateAssetStatus} assets={assets} isAdmin />
           )}
         </div>
       </section>

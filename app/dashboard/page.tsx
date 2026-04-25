@@ -10,7 +10,7 @@ import {
 import { AppShell } from '@/app/components/AppShell'
 import { CategoryAnalytics } from '@/app/dashboard/CategoryAnalytics'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { requireSupabaseUser } from '@/lib/supabase/session'
+import { requireSupabaseAdmin } from '@/lib/supabase/session'
 
 type AssetStatus = 'IN_STOCK' | 'ASSIGNED' | 'IN_REPAIR' | 'RETIRED'
 
@@ -32,6 +32,12 @@ type CategoryShare = {
   label: string
   percentage: number
 }
+const STATUS_LABELS: Record<AssetStatus, string> = {
+  IN_STOCK: 'In Stock',
+  ASSIGNED: 'In Use',
+  IN_REPAIR: 'Under Repair',
+  RETIRED: 'Retired',
+}
 
 const STATUS_META: Array<{
   icon: typeof Boxes
@@ -40,8 +46,8 @@ const STATUS_META: Array<{
 }> = [
   { icon: Boxes, label: 'Total Assets' },
   { icon: Archive, label: 'In Stock', status: 'IN_STOCK' },
-  { icon: UserCircle2, label: 'Assigned', status: 'ASSIGNED' },
-  { icon: Wrench, label: 'In Repair', status: 'IN_REPAIR' },
+  { icon: UserCircle2, label: 'In Use', status: 'ASSIGNED' },
+  { icon: Wrench, label: 'Under Repair', status: 'IN_REPAIR' },
   { icon: ShieldCheck, label: 'Retired', status: 'RETIRED' },
 ]
 const CATEGORY_COLORS = ['#0f766e', '#2563eb', '#d97706', '#e11d48', '#0f172a', '#059669'] as const
@@ -94,9 +100,8 @@ function buildCategoryShares(rows: AssetBreakdownRow[]): CategoryShare[] {
 }
 
 export default async function DashboardPage() {
-  const user = await requireSupabaseUser()
+  const user = await requireSupabaseAdmin('/assets')
   const supabase = createSupabaseServerClient()
-  const isAdmin = user.role === 'ADMIN'
 
   let recentAssets: AssetSummaryRow[] = []
   let assetBreakdownRows: AssetBreakdownRow[] = []
@@ -163,14 +168,12 @@ export default async function DashboardPage() {
           </div>
 
           <div className="print-hide flex flex-wrap items-center gap-3">
-            {isAdmin && (
-              <Link
-                href="/dashboard/assets?new=1"
-                className="print-hide rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
-              >
-                Add Asset
-              </Link>
-            )}
+            <Link
+              href="/dashboard/assets?new=1"
+              className="print-hide rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
+            >
+              Add Asset
+            </Link>
           </div>
         </div>
 
@@ -275,7 +278,11 @@ export default async function DashboardPage() {
                         <tr key={asset.id} className="hover:bg-slate-50">
                           <td className="px-4 py-3 font-mono text-slate-900">{asset.asset_tag ?? '-'}</td>
                           <td className="px-4 py-3 text-slate-600">{asset.category ?? 'Other'}</td>
-                          <td className="px-4 py-3 text-slate-600">{asset.status ?? 'UNKNOWN'}</td>
+                          <td className="px-4 py-3 text-slate-600">
+                            {asset.status && asset.status in STATUS_LABELS
+                              ? STATUS_LABELS[asset.status as AssetStatus]
+                              : asset.status ?? 'UNKNOWN'}
+                          </td>
                           <td className="px-4 py-3 text-slate-600">{formatRelativeDate(asset.updated_at)}</td>
                           <td className="print-hide px-4 py-3">
                             <div className="flex flex-wrap items-center gap-2">
@@ -331,9 +338,7 @@ export default async function DashboardPage() {
                   Role access
                 </div>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {isAdmin
-                    ? 'Admin access is active, so the asset dashboard can open create and edit controls.'
-                    : 'Staff access is active, so the workspace stays read-only while print remains available.'}
+                  Admin access is active, so the asset dashboard can open create and edit controls.
                 </p>
               </div>
             </div>

@@ -2,9 +2,10 @@ import Link from 'next/link'
 import { AssetForm } from '@/app/components/AssetForm'
 import { updateAsset } from '@/app/actions/assets'
 import { AppShell } from '@/app/components/AppShell'
+import { mapLocationOption } from '@/lib/locations'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseAdmin } from '@/lib/supabase/session'
-import type { AssetRecord, AssetUserOption } from '@/types/app'
+import type { AssetLocationOption, AssetRecord, AssetUserOption } from '@/types/app'
 
 type Props = { params: { id: string } }
 
@@ -30,17 +31,19 @@ export default async function EditAssetPage({ params }: Props) {
   }
 
   let users: AssetUserOption[] = []
+  let locations: AssetLocationOption[] = []
 
   try {
-    const [{ data: assetRow }, { data: profileRows }] = await Promise.all([
+    const [{ data: assetRow }, { data: profileRows }, { data: locationRows }] = await Promise.all([
       supabase
         .from('assets')
         .select(
-          'id, asset_tag, category, brand, model, serial_number, status, assigned_user_id, warranty_expiry, notes'
+          'id, asset_tag, category, brand, model, serial_number, status, assigned_user_id, location_id, warranty_expiry, notes'
         )
         .eq('id', params.id)
         .maybeSingle(),
       supabase.from('profiles').select('id, email').not('email', 'is', null).order('email'),
+      supabase.from('locations').select('id, name, building, floor').order('name'),
     ])
 
     if (assetRow) {
@@ -49,6 +52,7 @@ export default async function EditAssetPage({ params }: Props) {
         assignedUserId: assetRow.assigned_user_id,
         brand: assetRow.brand ?? '',
         id: assetRow.id,
+        locationId: assetRow.location_id,
         model: assetRow.model ?? '',
         notes: assetRow.notes,
         serialNumber: assetRow.serial_number,
@@ -63,8 +67,10 @@ export default async function EditAssetPage({ params }: Props) {
       id: profile.id,
       name: getProfileLabel(profile.email),
     }))
+    locations = (locationRows ?? []).map(mapLocationOption)
   } catch {
     users = []
+    locations = []
   }
 
   const action = updateAsset.bind(null, params.id)
@@ -84,7 +90,13 @@ export default async function EditAssetPage({ params }: Props) {
           </div>
         </div>
 
-        <AssetForm action={action} asset={asset} cancelHref={`/assets/${params.id}`} users={users} />
+        <AssetForm
+          action={action}
+          asset={asset}
+          cancelHref={`/assets/${params.id}`}
+          locations={locations}
+          users={users}
+        />
       </section>
     </AppShell>
   )

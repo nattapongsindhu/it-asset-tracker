@@ -16,6 +16,14 @@ export type AssetUserOption = {
   email: string
 }
 
+export type AssetLocationOption = {
+  id: string
+  name: string
+  building?: string | null
+  floor?: string | null
+  label: string
+}
+
 export type AssetRecord = {
   id: string
   assetTag: string
@@ -26,6 +34,8 @@ export type AssetRecord = {
   status: AssetStatus
   assignedUserId?: string | null
   assignedUser?: AssetUserOption | null
+  locationId?: string | null
+  location?: AssetLocationOption | null
   warrantyExpiry?: string | Date | null
   notes?: string | null
   createdAt?: string | Date | null
@@ -34,7 +44,8 @@ export type AssetRecord = {
 
 export type AssetAssignmentRecord = {
   id: string
-  assetId: string
+  assetId?: string | null
+  assetTagSnapshot?: string | null
   status: AssetAssignmentStatus
   assignedAt: string | Date
   returnedAt?: string | Date | null

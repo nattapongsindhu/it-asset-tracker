@@ -3,12 +3,13 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Plus, X } from 'lucide-react'
 import { AssetForm } from '@/app/components/AssetForm'
-import type { AssetUserOption } from '@/types/app'
+import type { AssetLocationOption, AssetUserOption } from '@/types/app'
 
 type ActionState = { error?: string } | undefined
 
 type Props = {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
+  locations: AssetLocationOption[]
   openByDefault?: boolean
   users: AssetUserOption[]
 }
@@ -25,7 +26,7 @@ function addNewParam(searchParams: { toString(): string }) {
   return nextParams
 }
 
-export function AddAssetModal({ action, openByDefault = false, users }: Props) {
+export function AddAssetModal({ action, locations, openByDefault = false, users }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -86,6 +87,7 @@ export function AddAssetModal({ action, openByDefault = false, users }: Props) {
             <AssetForm
               action={action}
               cancelHref={buildTarget(removeNewParam(searchParams))}
+              locations={locations}
               submitLabel="Create Asset"
               users={users}
             />

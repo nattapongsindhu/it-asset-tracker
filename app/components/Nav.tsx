@@ -3,24 +3,35 @@ import { Boxes, LayoutDashboard, ShieldCheck } from 'lucide-react'
 import type { AppSessionUser } from '@/types/app'
 import { SignOutButton } from './SignOutButton'
 
-const NAV_ITEMS = [
-  {
-    description: 'Overview and status counts',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-    label: 'Dashboard',
-  },
-  {
-    description: 'Inventory and assignments',
-    href: '/dashboard/assets',
-    icon: Boxes,
-    label: 'Assets',
-  },
-] as const
-
 type Props = {
   currentPath: string
   user: AppSessionUser
+}
+
+function getNavItems(isAdmin: boolean) {
+  return isAdmin
+    ? [
+        {
+          description: 'Overview and status counts',
+          href: '/dashboard',
+          icon: LayoutDashboard,
+          label: 'Dashboard',
+        },
+        {
+          description: 'Inventory, movement, and assignments',
+          href: '/dashboard/assets',
+          icon: Boxes,
+          label: 'Assets',
+        },
+      ]
+    : [
+        {
+          description: 'Devices currently assigned to you',
+          href: '/assets',
+          icon: Boxes,
+          label: 'My Assets',
+        },
+      ]
 }
 
 function isActive(href: string, currentPath: string) {
@@ -28,16 +39,20 @@ function isActive(href: string, currentPath: string) {
     return currentPath === '/dashboard'
   }
 
-  return href === '/dashboard/assets'
-    ? currentPath === '/dashboard/assets' ||
-        currentPath.startsWith('/dashboard/assets/') ||
-        currentPath === '/assets' ||
-        currentPath.startsWith('/assets/')
-    : currentPath === href || currentPath.startsWith(`${href}/`)
+  if (href === '/dashboard/assets') {
+    return currentPath === '/dashboard/assets' || currentPath.startsWith('/dashboard/assets/')
+  }
+
+  if (href === '/assets') {
+    return currentPath === '/assets' || currentPath.startsWith('/assets/')
+  }
+
+  return currentPath === href || currentPath.startsWith(`${href}/`)
 }
 
 export function Nav({ currentPath, user }: Props) {
   const isAdmin = user.role === 'ADMIN'
+  const navItems = getNavItems(isAdmin)
   const auditShortcutHref = currentPath === '/audit' ? '/dashboard' : '/audit'
   const auditShortcutLabel = currentPath === '/audit' ? 'Back to Dashboard' : 'Open Audit Log'
   const auditShortcutText =
@@ -75,7 +90,7 @@ export function Nav({ currentPath, user }: Props) {
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Menu</p>
             </div>
             <nav className="space-y-2">
-              {NAV_ITEMS.map(item => {
+              {navItems.map(item => {
                 const active = isActive(item.href, currentPath)
                 const Icon = item.icon
 
@@ -171,7 +186,7 @@ export function Nav({ currentPath, user }: Props) {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {NAV_ITEMS.map(item => {
+            {navItems.map(item => {
               const active = isActive(item.href, currentPath)
               const Icon = item.icon
 
