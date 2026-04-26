@@ -9,33 +9,33 @@
 ![License](https://img.shields.io/badge/License-MIT-22C55E?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Production_Ready-22C55E?style=flat-square)
 
-> ระบบบริหารจัดการทรัพย์สินไอทีสำหรับงาน internal operations ที่ต้องการความชัดเจนเรื่องผู้ถือครองอุปกรณ์, การย้ายตำแหน่ง, ประวัติการซ่อม, warranty visibility, และ audit trail แบบ production-grade
+> A production-ready IT asset management system for operations-heavy internal teams that need clear assignment history, location tracking, maintenance records, warranty visibility, and auditability.
 
 Production: [it-asset-tracker-silk.vercel.app](https://it-asset-tracker-silk.vercel.app)
 
-อ้างอิงสถานะเอกสาร: **April 25, 2026**  
-สถานะล่าสุดของระบบ: **Phase 4 Completed**
+Documentation status: **April 25, 2026**  
+Current release status: **Phase 4 Completed**
 
-หมายเหตุ: badge `SQLite` ยังคงไว้เพื่อสะท้อนประวัติของโปรเจกต์ แต่ runtime ปัจจุบันเป็น **Supabase-first** และ Prisma runtime ถูกถอดออกจาก active stack แล้ว
+Note: the `SQLite` badge is intentionally retained for project history. The active runtime is now **Supabase-first**, and Prisma runtime is no longer part of the production architecture.
 
 ---
 
 ## Project Overview
 
-`IT Asset Tracker` ถูกออกแบบมาเพื่อแทน workflow แบบ manual หรือ spreadsheet ในงาน IT operations ที่ต้องติดตามว่า:
+`IT Asset Tracker` replaces manual spreadsheets and lightweight checklists with a structured digital workflow for internal IT operations. It helps teams answer questions such as:
 
-- อุปกรณ์ชิ้นไหนอยู่กับใคร
-- ตอนนี้เครื่องอยู่ location ไหน
-- เครื่องเคยผ่านการซ่อมหรือย้ายมือเมื่อไร
-- ใครเป็นคนทำ action สำคัญในระบบ
+- Which employee currently holds this device?
+- Where is the asset physically located?
+- When was it reassigned, repaired, retired, or returned to stock?
+- Which user performed a critical operational action?
 
-สถาปัตยกรรมปัจจุบันใช้ `Next.js App Router + Supabase + Vercel` โดยเน้น:
+The current platform is built on `Next.js App Router + Supabase + Vercel` and is optimized around:
 
-- `Accountability`: ตรวจสอบย้อนหลังได้จริง
-- `Atomic Workflows`: assignment, repair, และ lifecycle สำคัญทำผ่าน RPC
-- `Operational Intelligence`: มี warranty alerts, maintenance logs, search, bulk actions, และ monthly report
+- `Accountability`: every important workflow can be traced back to a user and timestamp
+- `Atomic Workflows`: assignment, repair, and lifecycle transitions are handled through RPC-backed logic
+- `Operational Intelligence`: warranty alerts, maintenance logs, search, bulk actions, and monthly reporting
 
-คู่มือฉบับเต็ม: [docs/HANDBOOK.md](docs/HANDBOOK.md)
+Full handbook: [docs/HANDBOOK.md](docs/HANDBOOK.md)
 
 ---
 
@@ -45,9 +45,9 @@ Production: [it-asset-tracker-silk.vercel.app](https://it-asset-tracker-silk.ver
 |---|---|---|
 | Frontend | Next.js 14 App Router | UI, routing, server components, server actions |
 | Language | TypeScript | Type safety |
-| Styling | Tailwind CSS | Responsive UI และ visual system |
-| Auth | Supabase Auth | Email/password และ magic link |
-| Database | Supabase PostgreSQL | Assets, profiles, locations, maintenance, audit |
+| Styling | Tailwind CSS | Responsive UI and visual system |
+| Auth | Supabase Auth | Email/password and magic link |
+| Database | Supabase PostgreSQL | Assets, profiles, locations, maintenance, and audit data |
 | Security | Supabase RLS | Role-aware access control |
 | Validation | Zod | Form and action validation |
 | Hosting | Vercel | Production deployment |
@@ -59,24 +59,24 @@ Production: [it-asset-tracker-silk.vercel.app](https://it-asset-tracker-silk.ver
 | Phase | Focus | Outcome |
 |---|---|---|
 | Phase 1 | Infrastructure & Core UI | Supabase auth, dashboard, CSV export, audit UI, analytics foundation |
-| Phase 2 | Operations | assignment workflow, location tracking, lifecycle flows, My Assets |
-| Phase 3 | Intelligence | warranty alerts, maintenance logs, repair history, global search |
-| Phase 4 | Hardening | bulk move/status actions, monthly maintenance report, login polish, favicon |
+| Phase 2 | Operations | Assignment workflow, location tracking, lifecycle flows, My Assets |
+| Phase 3 | Intelligence | Warranty alerts, maintenance logs, repair history, global search |
+| Phase 4 | Hardening | Bulk move/status actions, monthly maintenance report, login polish, favicon |
 
 ---
 
 ## Key Features
 
-- Dashboard analytics พร้อม category summary และ warranty watch
-- Asset Assignment แบบ assign, reassign, return to stock พร้อม history
-- Location Tracking แบบรายเครื่องและ bulk move
-- Maintenance Logs พร้อม technician, cost, notes, และ repair history
-- Warranty Alerts สำหรับเครื่องที่หมดประกันหรือใกล้หมดภายใน 30 วัน
-- Staff-facing `My Assets` และ `Request Repair`
-- Global Search จาก `asset_tag`, `serial_number`, และ `model`
-- Bulk Actions สำหรับเปลี่ยน status และ location หลายเครื่องพร้อมกัน
-- Monthly Maintenance CSV Report
-- Audit Log สำหรับ action สำคัญและ admin cleanup controls
+- Dashboard analytics with category summary and warranty watch
+- Asset assignment with assign, reassign, and return-to-stock flows
+- Location tracking for single-device and bulk movement
+- Maintenance logs with technician, cost, notes, and repair history
+- Warranty alerts for expired and near-expiry assets
+- Staff-facing `My Assets` and `Request Repair`
+- Global search by `asset_tag`, `serial_number`, and `model`
+- Bulk actions for status changes and location moves
+- Monthly maintenance CSV reporting
+- Audit log visibility with admin cleanup controls
 
 ---
 
@@ -85,11 +85,11 @@ Production: [it-asset-tracker-silk.vercel.app](https://it-asset-tracker-silk.ver
 | Route | Access | Purpose |
 |---|---|---|
 | `/login` | Public | Sign-in entrypoint |
-| `/dashboard` | Admin | Executive snapshot และ analytics |
-| `/dashboard/assets` | Admin | Inventory, filters, bulk actions, exports |
-| `/assets` | Staff / Admin | Staff sees `My Assets`, admin uses detail navigation |
-| `/assets/[id]` | Authenticated | Asset detail, assignment, maintenance, lifecycle |
-| `/audit` | Admin | Audit review และ cleanup |
+| `/dashboard` | Admin | Executive snapshot and analytics |
+| `/dashboard/assets` | Admin | Inventory, filters, bulk actions, and exports |
+| `/assets` | Staff / Admin | Staff sees `My Assets`; admin uses detail navigation |
+| `/assets/[id]` | Authenticated | Asset detail, assignment, maintenance, and lifecycle |
+| `/audit` | Admin | Audit review and cleanup |
 
 ---
 
@@ -103,9 +103,9 @@ cd it-asset-tracker
 npm install
 ```
 
-### 2. Configure environment
+### 2. Configure the environment
 
-คัดลอก `.env.example` ไปเป็น `.env.local` แล้วใส่ค่า:
+Copy `.env.example` to `.env.local` and set:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
@@ -122,7 +122,7 @@ npm run dev
 
 Local URL: [http://localhost:3001/login](http://localhost:3001/login)
 
-### 4. Build check
+### 4. Run a production build check
 
 ```bash
 npm run build
@@ -132,27 +132,27 @@ npm run build
 
 ## Deployment Notes
 
-- ใช้ `Vercel` สำหรับ production hosting
-- ใช้ `supabase db push --yes` สำหรับ apply migrations ไปยัง remote project
-- auth redirect และ callback path ต้องอิง `lib/site-url.ts`
-- หลีกเลี่ยงการ hardcode `localhost` ใน redirect flow
-- ควรรัน `npm run build` ก่อน push production ทุกครั้ง
+- Use `Vercel` for production hosting
+- Use `supabase db push --yes` to apply migrations to the remote project
+- All auth redirects and callback paths should rely on `lib/site-url.ts`
+- Avoid hardcoding `localhost` in redirect logic
+- Run `npm run build` before pushing production changes
 
 ---
 
-## Timezone & Data Integrity
+## Timezone and Data Integrity
 
 ### Timezone
 
-- timestamp ถูกเก็บในฐานข้อมูลตามมาตรฐาน
-- การแสดงผลใน UI ใช้ browser timezone ของผู้ใช้ผ่าน `LocalizedDateTime`
-- reference timezone ของรอบพัฒนาหลักคือ `America/Los_Angeles`
+- Timestamps are stored in the database using standard timestamp handling
+- UI rendering uses the user's browser timezone through `LocalizedDateTime`
+- The primary development reference timezone for this project is `America/Los_Angeles`
 
 ### Data Integrity
 
-- `public.asset_assignments` และ `public.maintenance_logs` เก็บ history แยกจาก asset หลัก
-- เมื่อ asset ถูกลบ `asset_id` จะใช้แนวคิด `set null on delete`
-- มี snapshot fields เช่น `asset_tag_snapshot` เพื่อรักษาบริบทสำหรับ audit และ history
+- `public.asset_assignments` and `public.maintenance_logs` store history separately from the main asset record
+- When an asset is deleted, `asset_id` follows a `set null on delete` strategy
+- Snapshot fields such as `asset_tag_snapshot` preserve context for audit and historical review
 
 ---
 
@@ -168,21 +168,21 @@ npm run generate:manual
 
 ---
 
-## Pros & Constraints
+## Pros and Constraints
 
 ### Pros
 
-- Supabase-first stack ดูแลง่ายและต้นทุนเริ่มต้นต่ำ
-- RPC-based workflows ช่วยลดข้อมูลครึ่งสำเร็จครึ่งล้มเหลว
-- Audit trail ครอบคลุมงาน operations สำคัญ
-- Admin และ Staff แยกสิทธิ์ชัดเจน
-- พร้อมใช้งานจริงสำหรับ internal asset operations
+- Supabase-first architecture is simple to operate and cost-efficient
+- RPC-based workflows reduce partial-write risk
+- Audit trail coverage is strong across operational actions
+- Admin and staff responsibilities are clearly separated
+- Ready for real internal IT asset operations
 
 ### Constraints
 
-- ยังเป็น single-tenant oriented system
-- reporting ยังเน้น CSV export มากกว่า BI dashboard เต็มรูปแบบ
-- email alerts และ scheduled automation ยังเป็น roadmap
+- Still designed primarily as a single-tenant system
+- Reporting is more CSV-centered than BI-dashboard-centered
+- Email alerts and scheduled automation remain roadmap items
 
 ---
 
