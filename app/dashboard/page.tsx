@@ -3,12 +3,15 @@ import {
   Archive,
   Boxes,
   Mail,
+  Search,
   ShieldCheck,
   UserCircle2,
   Wrench,
 } from 'lucide-react'
 import { AppShell } from '@/app/components/AppShell'
+import { AssetSearchInput } from '@/app/components/AssetSearchInput'
 import { CategoryAnalytics } from '@/app/dashboard/CategoryAnalytics'
+import { WarrantySummaryCard } from '@/app/dashboard/WarrantySummaryCard'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseAdmin } from '@/lib/supabase/session'
 
@@ -24,6 +27,7 @@ type AssetSummaryRow = {
 type AssetBreakdownRow = {
   category: string | null
   status: string | null
+  warranty_expiry: string | null
 }
 type CategoryShare = {
   color: string
@@ -52,6 +56,12 @@ const STATUS_META: Array<{
 ]
 const CATEGORY_COLORS = ['#0f766e', '#2563eb', '#d97706', '#e11d48', '#0f172a', '#059669'] as const
 
+type Props = {
+  searchParams?: {
+    q?: string | string[]
+  }
+}
+
 function formatRelativeDate(value: string | null) {
   if (!value) {
     return 'No updates yet'
@@ -62,7 +72,21 @@ function formatRelativeDate(value: string | null) {
   }).format(new Date(value))
 }
 
-function buildCategoryShares(rows: AssetBreakdownRow[]): CategoryShare[] {
+function getSingleValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value
+}
+
+function buildAssetSearchFilter(query: string) {
+  const searchTerm = query.replace(/,/g, ' ').trim()
+
+  if (!searchTerm) {
+    return ''
+  }
+
+  return `asset_tag.ilike.%${searchTerm}%,model.ilike.%${searchTerm}%,serial_number.ilike.%${searchTerm}%`
+}
+
+function buildCategoryShares(rows: AssetBreakdownRow[], searchQuery = ''): CategoryShare[] {
   const totals = new Map<string, number>()
 
   rows.forEach(row => {
@@ -87,36 +111,48 @@ function buildCategoryShares(rows: AssetBreakdownRow[]): CategoryShare[] {
     visibleCategories.push({ label: 'Other', count: remainingCount })
   }
 
+  const querySuffix = searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ''
+
   return visibleCategories.map((item, index) => ({
     color: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
     count: item.count,
     href:
       item.label === 'Other'
-        ? '/dashboard/assets?type=Other'
-        : `/dashboard/assets?type=${encodeURIComponent(item.label)}`,
+        ? `/dashboard/assets?type=Other${querySuffix}`
+        : `/dashboard/assets?type=${encodeURIComponent(item.label)}${querySuffix}`,
     label: item.label,
     percentage: Number(((item.count / total) * 100).toFixed(1)),
   }))
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: Props) {
   const user = await requireSupabaseAdmin('/assets')
   const supabase = createSupabaseServerClient()
+  const q = getSingleValue(searchParams?.q)?.trim() ?? ''
 
   let recentAssets: AssetSummaryRow[] = []
   let assetBreakdownRows: AssetBreakdownRow[] = []
 
   try {
+    let recentAssetsQuery = supabase
+      .from('assets')
+      .select('id, asset_tag, category, status, updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(6)
+    let breakdownQuery = supabase.from('assets').select('status, category, warranty_expiry')
+
+    if (q) {
+      const searchFilter = buildAssetSearchFilter(q)
+      recentAssetsQuery = recentAssetsQuery.or(searchFilter)
+      breakdownQuery = breakdownQuery.or(searchFilter)
+    }
+
     const [
       { data: recentAssetRows, error: recentAssetsError },
       { data: breakdownRows, error: breakdownError },
     ] = await Promise.all([
-      supabase
-        .from('assets')
-        .select('id, asset_tag, category, status, updated_at')
-        .order('updated_at', { ascending: false })
-        .limit(6),
-      supabase.from('assets').select('status, category'),
+      recentAssetsQuery,
+      breakdownQuery,
     ])
 
     if (recentAssetsError || breakdownError) {
@@ -127,6 +163,7 @@ export default async function DashboardPage() {
     assetBreakdownRows = (breakdownRows ?? []).map(row => ({
       category: row.category,
       status: row.status,
+      warranty_expiry: row.warranty_expiry,
     }))
   } catch {
     recentAssets = []
@@ -136,13 +173,15 @@ export default async function DashboardPage() {
   const assetStatuses = assetBreakdownRows
     .map(row => row.status)
     .filter((status): status is string => typeof status === 'string')
-  const categoryShares = buildCategoryShares(assetBreakdownRows)
+  const categoryShares = buildCategoryShares(assetBreakdownRows, q)
   const totalAssets = assetStatuses.length
   const assignedRatio =
     totalAssets === 0 ? 0 : Math.round((statsCount(assetStatuses, 'ASSIGNED') / totalAssets) * 100)
+  const searchSuffix = q ? `&q=${encodeURIComponent(q)}` : ''
+  const baseInventoryHref = q ? `/dashboard/assets?q=${encodeURIComponent(q)}` : '/dashboard/assets'
 
   const stats = STATUS_META.map(item => ({
-    href: item.status ? `/dashboard/assets?status=${item.status}` : '/dashboard/assets',
+    href: item.status ? `/dashboard/assets?status=${item.status}${searchSuffix}` : baseInventoryHref,
     icon: item.icon,
     label: item.label,
     value: item.status
@@ -177,7 +216,29 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="print-hide grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <section className="print-hide rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <Search className="h-4 w-4" />
+            Global inventory search
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <AssetSearchInput
+              defaultValue={q}
+              placeholder="Search asset tag, model, serial..."
+            />
+            <Link
+              href={q ? '/dashboard' : '/dashboard/assets'}
+              className="text-sm font-medium text-slate-500 hover:text-slate-800"
+            >
+              {q ? 'Clear search' : 'Open advanced filters'}
+            </Link>
+          </div>
+          <p className="mt-3 text-sm text-slate-500">
+            Real-time search updates this dashboard from asset tag, model, and serial number using case-insensitive matching.
+          </p>
+        </section>
+
+        <div className="print-hide mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           {stats.map(stat => {
             const Icon = stat.icon
 
@@ -210,6 +271,13 @@ export default async function DashboardPage() {
           })}
         </div>
 
+        <div className="mt-6">
+          <WarrantySummaryCard
+            searchQuery={q}
+            warrantyDates={assetBreakdownRows.map(row => row.warranty_expiry)}
+          />
+        </div>
+
         <div className="print-single-column mt-8 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-6">
             <section className="print-hide rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
@@ -221,7 +289,7 @@ export default async function DashboardPage() {
                   <h2 className="mt-2 text-xl font-semibold text-slate-900">Asset mix by category</h2>
                 </div>
                 <Link
-                  href="/dashboard/assets"
+                  href={baseInventoryHref}
                   className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900"
                 >
                   Open full inventory
@@ -250,7 +318,7 @@ export default async function DashboardPage() {
                   <h2 className="mt-2 text-xl font-semibold text-slate-900">Latest inventory updates</h2>
                 </div>
                 <Link
-                  href="/dashboard/assets"
+                  href={baseInventoryHref}
                   className="print-hide rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900"
                 >
                   Open asset list

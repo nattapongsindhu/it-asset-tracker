@@ -8,11 +8,18 @@ import { LocalizedDateTime } from '@/app/components/LocalizedDateTime'
 import { formatLocationLabel, mapLocationOption, type AssetLocationRow } from '@/lib/locations'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseUser } from '@/lib/supabase/session'
-import type { AssetAssignmentRecord, AssetLocationOption, AssetStatus, AssetUserOption } from '@/types/app'
+import type {
+  AssetAssignmentRecord,
+  AssetLocationOption,
+  AssetStatus,
+  AssetUserOption,
+  MaintenanceLogRecord,
+} from '@/types/app'
 import { AssetAssignmentPanel } from './AssetAssignmentPanel'
 import { AssetLifecyclePanel } from './AssetLifecyclePanel'
 import { AssetLocationPanel } from './AssetLocationPanel'
 import { DeleteAssetButton } from './DeleteAssetButton'
+import { RepairHistoryPanel } from './RepairHistoryPanel'
 
 const STATUS_LABELS: Record<string, string> = {
   IN_STOCK: 'In Stock',
@@ -63,6 +70,18 @@ type AssetDetail = {
   warranty_expiry: string | null
 }
 
+type MaintenanceHistoryRow = {
+  action_taken: string | null
+  asset_id: string | null
+  asset_tag_snapshot: string | null
+  cost: number | string | null
+  created_at: string
+  created_by_profile: ProfileLookupRow[] | ProfileLookupRow | null
+  id: string
+  notes: string | null
+  technician_name: string | null
+}
+
 function formatValue(value: string | null | undefined) {
   return value && value.trim().length > 0 ? value : '-'
 }
@@ -107,7 +126,8 @@ function mapProfile(profile: ProfileLookupRow[] | ProfileLookupRow | null | unde
 function buildDetailRows(
   asset: AssetDetail,
   assignedUserName: string,
-  currentLocationLabel: string
+  currentLocationLabel: string,
+  lastMaintenanceValue: ReactNode
 ): DetailRow[] {
   return [
     { label: 'Asset Tag', value: formatValue(asset.asset_tag) },
@@ -121,6 +141,10 @@ function buildDetailRows(
     {
       label: 'Warranty Expiry',
       value: <LocalizedDateTime value={asset.warranty_expiry} />,
+    },
+    {
+      label: 'Last Maintenance',
+      value: lastMaintenanceValue,
     },
     {
       label: 'Created',
@@ -157,6 +181,30 @@ function mapAssignmentHistory(historyRows: unknown[]): AssetAssignmentRecord[] {
       returnedBy: mapProfile(row.returned_by_profile),
       status: row.status === 'RETURNED' ? 'RETURNED' : 'ASSIGNED',
       user: mapProfile(row.user),
+    }
+  })
+}
+
+function mapMaintenanceHistory(historyRows: unknown[]): MaintenanceLogRecord[] {
+  return historyRows.map(rawRow => {
+    const row = rawRow as MaintenanceHistoryRow
+    const parsedCost =
+      typeof row.cost === 'number'
+        ? row.cost
+        : typeof row.cost === 'string' && row.cost.trim().length > 0
+          ? Number(row.cost)
+          : null
+
+    return {
+      actionTaken: row.action_taken ?? 'Maintenance update',
+      assetId: row.asset_id,
+      assetTagSnapshot: row.asset_tag_snapshot,
+      cost: parsedCost !== null && Number.isFinite(parsedCost) ? parsedCost : null,
+      createdAt: row.created_at,
+      createdBy: mapProfile(row.created_by_profile),
+      id: row.id,
+      notes: row.notes,
+      technicianName: row.technician_name,
     }
   })
 }
@@ -212,6 +260,21 @@ export default async function AssetDetailPage({ params }: Props) {
   let assignmentHistory: AssetAssignmentRecord[] = []
   let assignmentHistoryReady = false
   let locations: AssetLocationOption[] = []
+  let maintenanceHistory: MaintenanceLogRecord[] = []
+  let maintenanceHistoryReady = false
+
+  const { data: maintenanceRows, error: maintenanceError } = await supabase
+    .from('maintenance_logs')
+    .select(
+      'id, asset_id, asset_tag_snapshot, action_taken, technician_name, cost, notes, created_at, created_by_profile:profiles!maintenance_logs_created_by_fkey(id, email)'
+    )
+    .eq('asset_id', params.id)
+    .order('created_at', { ascending: false })
+
+  if (!maintenanceError) {
+    maintenanceHistoryReady = true
+    maintenanceHistory = mapMaintenanceHistory((maintenanceRows ?? []) as unknown[])
+  }
 
   if (isAdmin) {
     const [
@@ -247,7 +310,21 @@ export default async function AssetDetailPage({ params }: Props) {
   const currentLocation = unwrapLocation(asset.location)
   const currentLocationLabel = formatLocationLabel(currentLocation, 'No location set')
   const assignmentSummary = getAssignmentSummary(asset.assigned_user_id, assignedUserName)
-  const rows = buildDetailRows(asset as AssetDetail, assignedUserName, currentLocationLabel)
+  const latestMaintenanceEntry = maintenanceHistory[0]
+  const lastMaintenanceValue = latestMaintenanceEntry ? (
+    <span>
+      {latestMaintenanceEntry.actionTaken} on{' '}
+      <LocalizedDateTime includeTime showTimeZone value={latestMaintenanceEntry.createdAt} />
+    </span>
+  ) : (
+    'No maintenance logged yet'
+  )
+  const rows = buildDetailRows(
+    asset as AssetDetail,
+    assignedUserName,
+    currentLocationLabel,
+    lastMaintenanceValue
+  )
   const currentPath = isAdmin ? '/dashboard/assets' : '/assets'
   const backHref = isAdmin ? '/dashboard/assets' : '/assets'
 
@@ -382,6 +459,8 @@ export default async function AssetDetailPage({ params }: Props) {
                 )}
               </section>
             )}
+
+            <RepairHistoryPanel entries={maintenanceHistory} ready={maintenanceHistoryReady} />
           </div>
 
           <div className="print-hide space-y-6">

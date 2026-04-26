@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import { Download, Pencil } from 'lucide-react'
 import type { BulkActionState } from '@/app/actions/assets'
+import { LocalizedDateTime } from '@/app/components/LocalizedDateTime'
+import { getWarrantyAlert, parseWarrantyDate } from '@/lib/warranty'
 import type { AssetRecord, AssetStatus } from '@/types/app'
 
 const STATUS_LABELS: Record<AssetStatus, string> = {
@@ -38,9 +40,15 @@ function formatDate(value: string | Date | null | undefined) {
     return '-'
   }
 
+  const date = parseWarrantyDate(value)
+
+  if (!date) {
+    return '-'
+  }
+
   return new Intl.DateTimeFormat('en-US', {
     dateStyle: 'medium',
-  }).format(new Date(value))
+  }).format(date)
 }
 
 function escapeCsvValue(value: string | null | undefined) {
@@ -62,6 +70,38 @@ function buildCsvValue(asset: AssetRecord) {
   ]
     .map(escapeCsvValue)
     .join(',')
+}
+
+function WarrantyCell({ value }: { value: AssetRecord['warrantyExpiry'] }) {
+  const alert = getWarrantyAlert(value)
+
+  if (!value) {
+    return (
+      <span className="text-slate-500">No warranty date</span>
+    )
+  }
+
+  const badge =
+    alert.level === 'expired' ? (
+      <span className="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+        Expired
+      </span>
+    ) : alert.level === 'warning' ? (
+      <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+        30-day alert
+      </span>
+    ) : null
+
+  return (
+    <div className="flex flex-col gap-1">
+      <LocalizedDateTime
+        fallback={formatDate(value)}
+        showTimeRemaining={alert.isCritical}
+        value={value}
+      />
+      {badge}
+    </div>
+  )
 }
 
 export function AssetTable({ action, assets, isAdmin }: Props) {
@@ -240,7 +280,9 @@ export function AssetTable({ action, assets, isAdmin }: Props) {
                 </td>
                 <td className="px-4 py-3 text-slate-600">{asset.assignedUser?.name ?? 'Unassigned'}</td>
                 <td className="px-4 py-3 text-slate-600">{asset.location?.label ?? 'No location set'}</td>
-                <td className="px-4 py-3 text-slate-600">{formatDate(asset.warrantyExpiry)}</td>
+                <td className="px-4 py-3 text-slate-600">
+                  <WarrantyCell value={asset.warrantyExpiry} />
+                </td>
                 <td className="print-hide px-4 py-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <Link

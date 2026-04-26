@@ -14,6 +14,7 @@ export type BulkActionState = { error?: string; message?: string } | undefined
 export type AssignmentActionState = { error?: string; message?: string } | undefined
 export type LocationActionState = { error?: string; message?: string } | undefined
 export type LifecycleActionState = { error?: string; message?: string } | undefined
+export type MaintenanceActionState = { error?: string; message?: string } | undefined
 export type RepairRequestActionState = { error?: string; message?: string } | undefined
 type SupabaseClient = ReturnType<typeof createSupabaseServerClient>
 
@@ -46,7 +47,29 @@ const updateAssetLocationSchema = z.object({
   locationId: z.string().optional(),
 })
 
+const maintenanceLogSchema = z.object({
+  actionTaken: z.string().min(1).max(200).trim(),
+  technicianName: z.string().max(120).trim().optional(),
+  cost: z.preprocess(value => {
+    if (typeof value !== 'string') {
+      return undefined
+    }
+
+    const trimmed = value.trim()
+
+    if (!trimmed) {
+      return undefined
+    }
+
+    const parsed = Number(trimmed)
+
+    return Number.isFinite(parsed) ? parsed : value
+  }, z.number().min(0).max(1000000).optional()),
+  notes: z.string().max(2000).trim().optional(),
+})
+
 type AssetFormInput = z.infer<typeof assetSchema>
+type MaintenanceLogInput = z.infer<typeof maintenanceLogSchema>
 type ProfileRow = {
   email: string | null
   id: string
@@ -86,6 +109,7 @@ type AssetRpcResult = {
   action?: string | null
   asset_id?: string | null
   assignment_id?: string | null
+  maintenance_log_id?: string | null
   previous_user_id?: string | null
   status?: AssetStatus | null
   user_id?: string | null
@@ -96,6 +120,8 @@ type LifecycleRpcName =
   | 'decommission_asset'
   | 'move_asset_to_repair'
   | 'return_asset_to_stock'
+
+type MaintenanceRpcName = 'log_asset_maintenance' | 'send_to_repair_v2'
 
 type LifecycleTransition = 'COMPLETE_REPAIR' | 'DECOMMISSION' | 'SEND_TO_REPAIR' | 'TERMINAL_LOCK'
 
@@ -143,7 +169,7 @@ function mapRpcError(message: string | undefined) {
   }
 
   if (message.includes('Could not find the function')) {
-    return 'Phase 2 migration is not applied in Supabase yet.'
+    return 'Required Supabase migration is not applied yet.'
   }
 
   if (message.includes('ACTOR_NOT_ADMIN')) {
@@ -164,6 +190,18 @@ function mapRpcError(message: string | undefined) {
 
   if (message.includes('ASSET_ALREADY_RETIRED')) {
     return 'Retired assets are locked from active lifecycle actions.'
+  }
+
+  if (message.includes('ASSET_NOT_IN_REPAIR')) {
+    return 'Maintenance logs can only be added while the asset is in the Under Repair workflow.'
+  }
+
+  if (message.includes('INVALID_MAINTENANCE_ACTION')) {
+    return 'Add a short maintenance action summary before saving this repair entry.'
+  }
+
+  if (message.includes('INVALID_MAINTENANCE_COST')) {
+    return 'Maintenance cost must be zero or greater.'
   }
 
   return message
@@ -255,6 +293,35 @@ async function invokeLifecycleRpc({
   const { data, error } = await supabase.rpc(rpcName, {
     p_actor_id: userId,
     p_asset_id: assetId,
+  })
+
+  if (error) {
+    return { data: null, error: mapRpcError(error.message) }
+  }
+
+  return { data: parseAssetRpcResult(data), error: undefined }
+}
+
+async function invokeMaintenanceRpc({
+  assetId,
+  input,
+  rpcName,
+  supabase,
+  userId,
+}: {
+  assetId: string
+  input: MaintenanceLogInput
+  rpcName: MaintenanceRpcName
+  supabase: SupabaseClient
+  userId: string
+}) {
+  const { data, error } = await supabase.rpc(rpcName, {
+    p_action_taken: input.actionTaken,
+    p_actor_id: userId,
+    p_asset_id: assetId,
+    p_cost: input.cost ?? null,
+    p_notes: normalizeOptionalValue(input.notes),
+    p_technician_name: normalizeOptionalValue(input.technicianName),
   })
 
   if (error) {
@@ -874,16 +941,25 @@ export async function updateAssetLocation(
 export async function sendAssetToRepair(
   assetId: string,
   _state: LifecycleActionState,
-  _formData: FormData
+  formData: FormData
 ): Promise<LifecycleActionState> {
-  void _state
-  void _formData
-
   const user = await requireSupabaseAdmin(`/assets/${assetId}`)
   const supabase = createSupabaseServerClient()
-  const rpcResult = await invokeLifecycleRpc({
+  const parsed = maintenanceLogSchema.safeParse({
+    actionTaken: formData.get('actionTaken'),
+    technicianName: formData.get('technicianName') || undefined,
+    cost: formData.get('cost') || undefined,
+    notes: formData.get('notes') || undefined,
+  })
+
+  if (!parsed.success) {
+    return { error: 'Add a maintenance action summary before sending this asset to repair.' }
+  }
+
+  const rpcResult = await invokeMaintenanceRpc({
     assetId,
-    rpcName: 'move_asset_to_repair',
+    input: parsed.data,
+    rpcName: 'send_to_repair_v2',
     supabase,
     userId: user.id,
   })
@@ -897,8 +973,42 @@ export async function sendAssetToRepair(
     message:
       rpcResult.data?.action === 'UNCHANGED'
         ? 'This asset is already in the repair workflow.'
-        : 'Asset moved into the Under Repair workflow.',
+        : 'Asset moved into the Under Repair workflow and the first maintenance entry was saved.',
   }
+}
+
+export async function logMaintenanceEntry(
+  assetId: string,
+  _state: MaintenanceActionState,
+  formData: FormData
+): Promise<MaintenanceActionState> {
+  const user = await requireSupabaseAdmin(`/assets/${assetId}`)
+  const supabase = createSupabaseServerClient()
+  const parsed = maintenanceLogSchema.safeParse({
+    actionTaken: formData.get('actionTaken'),
+    technicianName: formData.get('technicianName') || undefined,
+    cost: formData.get('cost') || undefined,
+    notes: formData.get('notes') || undefined,
+  })
+
+  if (!parsed.success) {
+    return { error: 'Add a maintenance action summary before saving this repair log.' }
+  }
+
+  const rpcResult = await invokeMaintenanceRpc({
+    assetId,
+    input: parsed.data,
+    rpcName: 'log_asset_maintenance',
+    supabase,
+    userId: user.id,
+  })
+
+  if (rpcResult.error) {
+    return { error: rpcResult.error }
+  }
+
+  revalidateAssetViews(assetId)
+  return { message: 'Maintenance log saved.' }
 }
 
 export async function completeAssetRepair(

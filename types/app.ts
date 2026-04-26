@@ -55,6 +55,18 @@ export type AssetAssignmentRecord = {
   returnedBy?: AssetUserOption | null
 }
 
+export type MaintenanceLogRecord = {
+  id: string
+  assetId?: string | null
+  assetTagSnapshot?: string | null
+  actionTaken: string
+  technicianName?: string | null
+  cost?: number | null
+  notes?: string | null
+  createdAt: string | Date
+  createdBy?: AssetUserOption | null
+}
+
 export type AuditLogRecord = {
   id: string
   action: string

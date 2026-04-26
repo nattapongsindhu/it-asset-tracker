@@ -1,7 +1,8 @@
 import Link from 'next/link'
-import { Boxes, Filter, MapPin, Search, ShieldCheck, UserCircle2 } from 'lucide-react'
+import { Boxes, Filter, MapPin, ShieldCheck, UserCircle2 } from 'lucide-react'
 import { bulkUpdateAssetStatus, createAsset } from '@/app/actions/assets'
 import { AppShell } from '@/app/components/AppShell'
+import { AssetSearchInput } from '@/app/components/AssetSearchInput'
 import { mapLocationOption, type AssetLocationRow } from '@/lib/locations'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireSupabaseAdmin } from '@/lib/supabase/session'
@@ -61,6 +62,16 @@ function unwrapLocation(location: AssetLocationRow[] | AssetLocationRow | null |
   return location ?? null
 }
 
+function buildAssetSearchFilter(query: string) {
+  const searchTerm = query.replace(/,/g, ' ').trim()
+
+  if (!searchTerm) {
+    return ''
+  }
+
+  return `asset_tag.ilike.%${searchTerm}%,model.ilike.%${searchTerm}%,serial_number.ilike.%${searchTerm}%`
+}
+
 export default async function DashboardAssetsPage({ searchParams }: Props) {
   const user = await requireSupabaseAdmin('/assets')
   const supabase = createSupabaseServerClient()
@@ -97,10 +108,7 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
     }
 
     if (q) {
-      const searchTerm = q.replace(/,/g, ' ')
-      assetQuery = assetQuery.or(
-        `asset_tag.ilike.%${searchTerm}%,brand.ilike.%${searchTerm}%,model.ilike.%${searchTerm}%,serial_number.ilike.%${searchTerm}%`
-      )
+      assetQuery = assetQuery.or(buildAssetSearchFilter(q))
     }
 
     const [
@@ -225,15 +233,10 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
               Filter inventory
             </div>
             <div className="flex flex-wrap gap-3">
-              <label className="relative block w-full sm:w-72">
-                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  name="q"
-                  defaultValue={q}
-                  placeholder="Search tag, brand, model, serial..."
-                  className="w-full rounded-2xl border border-slate-300 py-3 pl-11 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-900"
-                />
-              </label>
+              <AssetSearchInput
+                defaultValue={q}
+                placeholder="Search asset tag, model, serial..."
+              />
               <select
                 name="status"
                 defaultValue={status}
