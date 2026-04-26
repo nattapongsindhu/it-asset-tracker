@@ -7,95 +7,95 @@
 ![Vercel](https://img.shields.io/badge/Vercel-Production-black?style=flat-square&logo=vercel)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-22C55E?style=flat-square)
-![Status](https://img.shields.io/badge/Status-Active-22C55E?style=flat-square)
+![Status](https://img.shields.io/badge/Status-Production_Ready-22C55E?style=flat-square)
 
-> Internal web application for tracking company IT assets with Supabase auth, role-based access control, audit logging, printable inventory views, and a modern Next.js App Router frontend.
+> ระบบบริหารจัดการทรัพย์สินไอทีสำหรับงาน internal operations ที่ต้องการความชัดเจนเรื่องผู้ถือครองอุปกรณ์, การย้ายตำแหน่ง, ประวัติการซ่อม, warranty visibility, และ audit trail แบบ production-grade
 
-Current production deployment: [it-asset-tracker-silk.vercel.app](https://it-asset-tracker-silk.vercel.app)
+Production: [it-asset-tracker-silk.vercel.app](https://it-asset-tracker-silk.vercel.app)
 
-README status reference: April 23, 2026
+อ้างอิงสถานะเอกสาร: **April 25, 2026**  
+สถานะล่าสุดของระบบ: **Phase 4 Completed**
 
-Legacy Prisma/SQLite badges are intentionally retained for project history. The current runtime architecture is Supabase-first.
-
----
-
-## Overview
-
-This project manages internal IT assets such as laptops, monitors, peripherals, and other equipment. It supports:
-
-- Email/password sign-in and magic link authentication via Supabase Auth
-- Role-aware access for `ADMIN` and `STAFF`
-- Dashboard, asset list, asset detail, edit, create, and audit log flows
-- Audit trail logging for asset mutations
-- Printable asset pages with cleaner A4 output
-- Browser-local timezone display for asset and audit timestamps
+หมายเหตุ: badge `SQLite` ยังคงไว้เพื่อสะท้อนประวัติของโปรเจกต์ แต่ runtime ปัจจุบันเป็น **Supabase-first** และ Prisma runtime ถูกถอดออกจาก active stack แล้ว
 
 ---
 
-## Current Architecture
+## Project Overview
 
-| Layer | Technology |
-|---|---|
-| Frontend | Next.js 14 App Router |
-| Language | TypeScript |
-| Styling | Tailwind CSS |
-| Backend / DB | Supabase (PostgreSQL) |
-| Auth / Session | Supabase Auth + `@supabase/ssr` |
-| Validation | Zod |
-| Deployment | Vercel |
+`IT Asset Tracker` ถูกออกแบบมาเพื่อแทน workflow แบบ manual หรือ spreadsheet ในงาน IT operations ที่ต้องติดตามว่า:
 
-Important application modules:
+- อุปกรณ์ชิ้นไหนอยู่กับใคร
+- ตอนนี้เครื่องอยู่ location ไหน
+- เครื่องเคยผ่านการซ่อมหรือย้ายมือเมื่อไร
+- ใครเป็นคนทำ action สำคัญในระบบ
 
-- `lib/supabase/session.ts`: session lookup and role enforcement
-- `middleware.ts`: route protection and login redirect handling
-- `lib/site-url.ts`: canonical redirect URL helper via `getURL()`
-- `app/actions/assets.ts`: server actions for asset mutations
-- `lib/audit.ts`: audit log writes to `public.audit_logs`
-- `lib/supabase/admin.ts`: admin Supabase client for privileged operations
+สถาปัตยกรรมปัจจุบันใช้ `Next.js App Router + Supabase + Vercel` โดยเน้น:
 
-Project rule of thumb:
+- `Accountability`: ตรวจสอบย้อนหลังได้จริง
+- `Atomic Workflows`: assignment, repair, และ lifecycle สำคัญทำผ่าน RPC
+- `Operational Intelligence`: มี warranty alerts, maintenance logs, search, bulk actions, และ monthly report
 
-- Do not reintroduce Prisma runtime unless explicitly requested.
-- For auth redirect work, use `lib/site-url.ts` instead of hardcoding local URLs.
-- For assignment, use `assets.assigned_user_id -> profiles.id` rather than a duplicate text owner field.
+คู่มือฉบับเต็ม: [docs/HANDBOOK.md](docs/HANDBOOK.md)
 
 ---
 
-## Current Status
+## Tech Stack
 
-Confirmed working as of April 23, 2026:
-
-- Supabase is the primary backend and auth provider
-- Email/password and magic link sign-in both work
-- Role and RLS behavior are active
-- `admin@company.com` and `septuplex7@gmail.com` are configured as admins
-- Dashboard, asset list, and audit log pages are working
-- Sidebar active state is fixed for `/dashboard` and `/dashboard/assets`
-- Print layout has been reduced to the main content and cleaned up for paper output
-- Asset detail and audit timestamps render in the browser timezone
-- Audit log reads live data and supports delete actions in the UI
-- Audit page is capped at the latest 1000 entries
-
----
-
-## Routes
-
-| Route | Access | Description |
+| Layer | Technology | Purpose |
 |---|---|---|
-| `/login` | Public | Sign in with email/password and magic link flow |
-| `/auth/callback` | Public | Supabase auth callback and redirect handling |
-| `/dashboard` | Authenticated | Main dashboard |
-| `/dashboard/assets` | Authenticated | Asset list, filters, print view, and admin add modal |
-| `/assets/new` | Admin only | Dedicated create page |
-| `/assets/[id]` | Authenticated | Asset detail page |
-| `/assets/[id]/edit` | Admin only | Asset edit page |
-| `/audit` | Admin only | Audit trail with up to 1000 recent entries |
+| Frontend | Next.js 14 App Router | UI, routing, server components, server actions |
+| Language | TypeScript | Type safety |
+| Styling | Tailwind CSS | Responsive UI และ visual system |
+| Auth | Supabase Auth | Email/password และ magic link |
+| Database | Supabase PostgreSQL | Assets, profiles, locations, maintenance, audit |
+| Security | Supabase RLS | Role-aware access control |
+| Validation | Zod | Form and action validation |
+| Hosting | Vercel | Production deployment |
 
 ---
 
-## Local Development
+## Phased Development Summary
 
-### 1. Clone and install
+| Phase | Focus | Outcome |
+|---|---|---|
+| Phase 1 | Infrastructure & Core UI | Supabase auth, dashboard, CSV export, audit UI, analytics foundation |
+| Phase 2 | Operations | assignment workflow, location tracking, lifecycle flows, My Assets |
+| Phase 3 | Intelligence | warranty alerts, maintenance logs, repair history, global search |
+| Phase 4 | Hardening | bulk move/status actions, monthly maintenance report, login polish, favicon |
+
+---
+
+## Key Features
+
+- Dashboard analytics พร้อม category summary และ warranty watch
+- Asset Assignment แบบ assign, reassign, return to stock พร้อม history
+- Location Tracking แบบรายเครื่องและ bulk move
+- Maintenance Logs พร้อม technician, cost, notes, และ repair history
+- Warranty Alerts สำหรับเครื่องที่หมดประกันหรือใกล้หมดภายใน 30 วัน
+- Staff-facing `My Assets` และ `Request Repair`
+- Global Search จาก `asset_tag`, `serial_number`, และ `model`
+- Bulk Actions สำหรับเปลี่ยน status และ location หลายเครื่องพร้อมกัน
+- Monthly Maintenance CSV Report
+- Audit Log สำหรับ action สำคัญและ admin cleanup controls
+
+---
+
+## Core Routes
+
+| Route | Access | Purpose |
+|---|---|---|
+| `/login` | Public | Sign-in entrypoint |
+| `/dashboard` | Admin | Executive snapshot และ analytics |
+| `/dashboard/assets` | Admin | Inventory, filters, bulk actions, exports |
+| `/assets` | Staff / Admin | Staff sees `My Assets`, admin uses detail navigation |
+| `/assets/[id]` | Authenticated | Asset detail, assignment, maintenance, lifecycle |
+| `/audit` | Admin | Audit review และ cleanup |
+
+---
+
+## Quick Start
+
+### 1. Install
 
 ```bash
 git clone https://github.com/nattapongsindhu/it-asset-tracker.git
@@ -103,88 +103,56 @@ cd it-asset-tracker
 npm install
 ```
 
-### 2. Configure environment variables
+### 2. Configure environment
 
-Copy `.env.example` to `.env` and provide values for:
+คัดลอก `.env.example` ไปเป็น `.env.local` แล้วใส่ค่า:
 
-```bash
+```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
-NEXT_PUBLIC_SITE_URL=
+NEXT_PUBLIC_SITE_URL=http://localhost:3001
 ```
 
-Notes:
-
-- `NEXT_PUBLIC_SITE_URL` should match the current site origin for redirects.
-- Do not hardcode `localhost` in auth redirect logic. Use `getURL()` from `lib/site-url.ts`.
-
-### 3. Start the app
+### 3. Run locally
 
 ```bash
 npm run dev
 ```
 
-Local app URL: [http://localhost:3001/login](http://localhost:3001/login)
+Local URL: [http://localhost:3001/login](http://localhost:3001/login)
 
-### 4. Production build
+### 4. Build check
 
 ```bash
 npm run build
-npm run start
 ```
 
 ---
 
-## Authentication And Access
+## Deployment Notes
 
-- Supabase Auth supports both email/password and magic link flows
-- Middleware redirects unauthenticated users to `/login`
-- `next` query params are validated through `getSafeRedirectPath()`
-- Session and role checks are enforced again in server-side code
-- Admin-only flows are guarded in `requireSupabaseAdmin()`
-
----
-
-## Audit Logging
-
-The app records important actions to `public.audit_logs`.
-
-Current audit-related behavior includes:
-
-- Viewing recent audit entries in the admin UI
-- Rendering actor email from `public.profiles`
-- Deleting single audit entries from the UI
-- Clearing all audit entries from the UI
-
-If delete actions fail with `permission denied for table audit_logs`, check Supabase grants and RLS delete policies for `public.audit_logs`, especially for admin users.
+- ใช้ `Vercel` สำหรับ production hosting
+- ใช้ `supabase db push --yes` สำหรับ apply migrations ไปยัง remote project
+- auth redirect และ callback path ต้องอิง `lib/site-url.ts`
+- หลีกเลี่ยงการ hardcode `localhost` ใน redirect flow
+- ควรรัน `npm run build` ก่อน push production ทุกครั้ง
 
 ---
 
-## UI Notes
+## Timezone & Data Integrity
 
-- Print output is optimized to avoid overflow and remove non-essential chrome
-- Edit buttons use cleaner icon styling
-- Asset and audit timestamps are localized in the browser
-- Sidebar route highlighting is aligned with the current dashboard paths
+### Timezone
 
----
+- timestamp ถูกเก็บในฐานข้อมูลตามมาตรฐาน
+- การแสดงผลใน UI ใช้ browser timezone ของผู้ใช้ผ่าน `LocalizedDateTime`
+- reference timezone ของรอบพัฒนาหลักคือ `America/Los_Angeles`
 
-## Phase 2 Work
+### Data Integrity
 
-Immediate next implementation area:
-
-- Asset assignment workflow using `public.profiles`
-- Automatic status changes for assign and unassign
-- Assignment audit events for assigned, unassigned, and reassigned flows
-- Correct assigned-user display across create, edit, list, and detail pages
-
-Planned follow-up work:
-
-- Bulk asset actions for admins
-- CSV export
-- Dashboard analytics and charting
-- Richer assignment history and lifecycle reporting
+- `public.asset_assignments` และ `public.maintenance_logs` เก็บ history แยกจาก asset หลัก
+- เมื่อ asset ถูกลบ `asset_id` จะใช้แนวคิด `set null on delete`
+- มี snapshot fields เช่น `asset_tag_snapshot` เพื่อรักษาบริบทสำหรับ audit และ history
 
 ---
 
@@ -197,6 +165,32 @@ npm run start
 npm run lint
 npm run generate:manual
 ```
+
+---
+
+## Pros & Constraints
+
+### Pros
+
+- Supabase-first stack ดูแลง่ายและต้นทุนเริ่มต้นต่ำ
+- RPC-based workflows ช่วยลดข้อมูลครึ่งสำเร็จครึ่งล้มเหลว
+- Audit trail ครอบคลุมงาน operations สำคัญ
+- Admin และ Staff แยกสิทธิ์ชัดเจน
+- พร้อมใช้งานจริงสำหรับ internal asset operations
+
+### Constraints
+
+- ยังเป็น single-tenant oriented system
+- reporting ยังเน้น CSV export มากกว่า BI dashboard เต็มรูปแบบ
+- email alerts และ scheduled automation ยังเป็น roadmap
+
+---
+
+## Documentation
+
+- Full handbook: [docs/HANDBOOK.md](docs/HANDBOOK.md)
+- Setup notes: [docs/SETUP_LITE.md](docs/SETUP_LITE.md)
+- Migration notes: [docs/MIGRATION_NOTES.md](docs/MIGRATION_NOTES.md)
 
 ---
 
