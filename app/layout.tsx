@@ -3,8 +3,16 @@ import './globals.css'
 import { Providers } from './providers'
 
 export const metadata: Metadata = {
-  title: 'IT Asset Tracker',
-  description: 'Internal IT asset management',
+  title: {
+    default: 'IT Asset Tracker',
+    template: '%s | IT Asset Tracker',
+  },
+  description: 'Production-grade internal IT asset lifecycle, maintenance, and warranty tracking.',
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/favicon.ico',
+    apple: '/icon.svg',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

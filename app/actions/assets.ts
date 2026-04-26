@@ -20,6 +20,7 @@ type SupabaseClient = ReturnType<typeof createSupabaseServerClient>
 
 const STATUSES = ['IN_STOCK', 'ASSIGNED', 'IN_REPAIR', 'RETIRED'] as const
 const BULK_STATUSES = ['IN_STOCK', 'IN_REPAIR', 'RETIRED'] as const
+const BULK_INTENTS = ['status', 'location'] as const
 
 const assetSchema = z.object({
   assetTag: z.string().min(1).max(50).trim(),
@@ -36,7 +37,25 @@ const assetSchema = z.object({
 
 const bulkAssetSchema = z.object({
   assetIds: z.array(z.string().min(1)).min(1),
-  status: z.enum(BULK_STATUSES),
+  intent: z.enum(BULK_INTENTS),
+  locationId: z.string().optional(),
+  status: z.enum(BULK_STATUSES).optional(),
+}).superRefine((value, context) => {
+  if (value.intent === 'status' && !value.status) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Status is required for bulk status updates.',
+      path: ['status'],
+    })
+  }
+
+  if (value.intent === 'location' && !value.locationId?.trim()) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Location is required for bulk move actions.',
+      path: ['locationId'],
+    })
+  }
 })
 
 const assignAssetSchema = z.object({
@@ -103,6 +122,7 @@ type BulkAssetRow = {
   asset_tag: string | null
   assigned_user_id: string | null
   id: string
+  location_id: string | null
   status: AssetStatus | null
 }
 type AssetRpcResult = {
@@ -1133,7 +1153,9 @@ export async function bulkUpdateAssetStatus(
     assetIds: uniqueIds(
       formData.getAll('assetIds').map(value => (typeof value === 'string' ? value : ''))
     ),
-    status: formData.get('status'),
+    intent: formData.get('intent') || 'status',
+    locationId: formData.get('locationId') || undefined,
+    status: formData.get('status') || undefined,
   }
 
   const parsed = bulkAssetSchema.safeParse(raw)
@@ -1144,7 +1166,7 @@ export async function bulkUpdateAssetStatus(
 
   const { data: currentAssets, error: currentAssetsError } = await supabase
     .from('assets')
-    .select('id, asset_tag, assigned_user_id, status')
+    .select('id, asset_tag, assigned_user_id, location_id, status')
     .in('id', parsed.data.assetIds)
 
   if (currentAssetsError) {
@@ -1157,13 +1179,72 @@ export async function bulkUpdateAssetStatus(
     return { error: 'No matching assets were found for this bulk action.' }
   }
 
+  if (parsed.data.intent === 'location') {
+    const nextLocationId = normalizeOptionalValue(parsed.data.locationId)
+    const locationsById = await loadLocationsById(
+      supabase,
+      uniqueIds([...assetsToProcess.map(asset => asset.location_id), nextLocationId])
+    )
+
+    if (!locationsById) {
+      return { error: 'Unable to verify the selected location right now.' }
+    }
+
+    if (!nextLocationId || !locationsById.has(nextLocationId)) {
+      return { error: 'Selected location was not found.' }
+    }
+
+    const assetsToMove = assetsToProcess.filter(asset => asset.location_id !== nextLocationId)
+
+    if (assetsToMove.length === 0) {
+      return { message: 'Selected assets already match the chosen location.' }
+    }
+
+    const { error: moveError } = await supabase
+      .from('assets')
+      .update({
+        location_id: nextLocationId,
+        updated_at: new Date().toISOString(),
+      })
+      .in('id', assetsToMove.map(asset => asset.id))
+
+    if (moveError) {
+      return { error: moveError.message ?? 'Unable to move the selected assets right now.' }
+    }
+
+    await Promise.all(
+      assetsToMove.map(asset =>
+        logAssetMovedEvent({
+          assetId: asset.id,
+          assetTag: asset.asset_tag,
+          locationsById,
+          nextLocationId,
+          previousLocationId: asset.location_id,
+          userId: user.id,
+        })
+      )
+    )
+
+    revalidateAssetViews()
+
+    const skippedCount = assetsToProcess.length - assetsToMove.length
+
+    return {
+      message:
+        skippedCount > 0
+          ? `Moved ${assetsToMove.length} asset${assetsToMove.length === 1 ? '' : 's'} and skipped ${skippedCount}.`
+          : `Moved ${assetsToMove.length} asset${assetsToMove.length === 1 ? '' : 's'} to ${getLocationLabelById(locationsById, nextLocationId)}.`,
+    }
+  }
+
   let updatedCount = 0
   let skippedCount = 0
+  const requestedStatus = parsed.data.status
 
   for (const asset of assetsToProcess) {
     const currentStatus = asset.status ?? 'IN_STOCK'
 
-    if (parsed.data.status === 'IN_REPAIR') {
+    if (requestedStatus === 'IN_REPAIR') {
       if (currentStatus === 'IN_REPAIR' || currentStatus === 'RETIRED') {
         skippedCount += 1
         continue
@@ -1185,7 +1266,7 @@ export async function bulkUpdateAssetStatus(
       continue
     }
 
-    if (parsed.data.status === 'RETIRED') {
+    if (requestedStatus === 'RETIRED') {
       if (currentStatus === 'RETIRED') {
         skippedCount += 1
         continue

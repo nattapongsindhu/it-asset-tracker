@@ -7,7 +7,7 @@ import { Download, Pencil } from 'lucide-react'
 import type { BulkActionState } from '@/app/actions/assets'
 import { LocalizedDateTime } from '@/app/components/LocalizedDateTime'
 import { getWarrantyAlert, parseWarrantyDate } from '@/lib/warranty'
-import type { AssetRecord, AssetStatus } from '@/types/app'
+import type { AssetLocationOption, AssetRecord, AssetStatus } from '@/types/app'
 
 const STATUS_LABELS: Record<AssetStatus, string> = {
   IN_STOCK: 'In Stock',
@@ -33,7 +33,20 @@ type Props = {
   action: (state: BulkActionState, formData: FormData) => Promise<BulkActionState>
   assets: AssetRecord[]
   isAdmin: boolean
+  locationOptions?: AssetLocationOption[]
+  monthlyMaintenanceRows?: Array<{
+    actionTaken: string
+    assetTag: string
+    cost: number | null
+    createdAt: string
+    createdBy: string
+    notes: string | null
+    technicianName: string | null
+  }>
+  monthlyReportLabel?: string
 }
+
+type BulkIntent = 'status' | 'location'
 
 function formatDate(value: string | Date | null | undefined) {
   if (!value) {
@@ -104,8 +117,17 @@ function WarrantyCell({ value }: { value: AssetRecord['warrantyExpiry'] }) {
   )
 }
 
-export function AssetTable({ action, assets, isAdmin }: Props) {
+export function AssetTable({
+  action,
+  assets,
+  isAdmin,
+  locationOptions,
+  monthlyMaintenanceRows,
+  monthlyReportLabel,
+}: Props) {
   const [state, formAction] = useFormState(action, undefined)
+  const [bulkIntent, setBulkIntent] = useState<BulkIntent>('status')
+  const [bulkLocationId, setBulkLocationId] = useState('')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [bulkStatus, setBulkStatus] = useState<Exclude<AssetStatus, 'ASSIGNED'>>('IN_REPAIR')
 
@@ -156,6 +178,45 @@ export function AssetTable({ action, assets, isAdmin }: Props) {
     URL.revokeObjectURL(downloadUrl)
   }
 
+  function exportMonthlyMaintenanceReport() {
+    const header = [
+      'Asset Tag',
+      'Action Taken',
+      'Technician Name',
+      'Cost',
+      'Logged At',
+      'Logged By',
+      'Notes',
+    ]
+      .map(escapeCsvValue)
+      .join(',')
+    const rows = (monthlyMaintenanceRows ?? []).map(row =>
+      [
+        row.assetTag,
+        row.actionTaken,
+        row.technicianName ?? '',
+        row.cost?.toFixed(2) ?? '',
+        row.createdAt,
+        row.createdBy,
+        row.notes ?? '',
+      ]
+        .map(escapeCsvValue)
+        .join(',')
+    )
+    const csvContent = ['\uFEFF' + header, ...rows].join('\r\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const downloadUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const reportSlug = (monthlyReportLabel ?? 'maintenance-report').toLowerCase().replace(/\s+/g, '-')
+
+    link.href = downloadUrl
+    link.download = `${reportSlug}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(downloadUrl)
+  }
+
   return (
     <form action={formAction}>
       <div className="print-hide border-b border-slate-200 px-5 py-4">
@@ -182,7 +243,18 @@ export function AssetTable({ action, assets, isAdmin }: Props) {
               </span>
             </button>
             {isAdmin && (
+              <button
+                type="button"
+                onClick={exportMonthlyMaintenanceReport}
+                disabled={!monthlyMaintenanceRows || monthlyMaintenanceRows.length === 0}
+                className="rounded-full border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Monthly Maintenance Report
+              </button>
+            )}
+            {isAdmin && (
               <>
+                <input type="hidden" name="intent" value={bulkIntent} />
                 <label className="inline-flex items-center gap-2 text-sm text-slate-600">
                   <input
                     type="checkbox"
@@ -193,17 +265,41 @@ export function AssetTable({ action, assets, isAdmin }: Props) {
                   Select all in view
                 </label>
                 <select
-                  name="status"
-                  value={bulkStatus}
-                  onChange={e => setBulkStatus(e.target.value as Exclude<AssetStatus, 'ASSIGNED'>)}
+                  value={bulkIntent}
+                  onChange={e => setBulkIntent(e.target.value as BulkIntent)}
                   className="rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-900"
                 >
-                  {BULK_STATUS_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
+                  <option value="status">Bulk Change Status</option>
+                  <option value="location">Bulk Move Location</option>
                 </select>
+                {bulkIntent === 'status' ? (
+                  <select
+                    name="status"
+                    value={bulkStatus}
+                    onChange={e => setBulkStatus(e.target.value as Exclude<AssetStatus, 'ASSIGNED'>)}
+                    className="rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-900"
+                  >
+                    {BULK_STATUS_OPTIONS.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    name="locationId"
+                    value={bulkLocationId}
+                    onChange={e => setBulkLocationId(e.target.value)}
+                    className="rounded-2xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-900"
+                  >
+                    <option value="">Select destination</option>
+                    {(locationOptions ?? []).map(option => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 {selectedIds.map(id => (
                   <input key={id} type="hidden" name="assetIds" value={id} />
                 ))}
@@ -220,6 +316,11 @@ export function AssetTable({ action, assets, isAdmin }: Props) {
           {isAdmin && (
             <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
               {selectedIds.length} selected
+            </span>
+          )}
+          {isAdmin && monthlyMaintenanceRows && (
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+              {monthlyMaintenanceRows.length} repair entries in {monthlyReportLabel ?? 'report'}
             </span>
           )}
           {state?.message && <span className="text-emerald-700">{state.message}</span>}

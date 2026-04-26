@@ -19,7 +19,7 @@ export default async function LoginPage({ searchParams }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-[#f3efe6]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.08),_transparent_28%),linear-gradient(180deg,_#f4efe5_0%,_#efe7d9_100%)]">
       <div className="mx-auto grid min-h-screen max-w-6xl gap-10 px-6 py-12 lg:grid-cols-[1.05fr_0.95fr] lg:px-10">
         <div className="flex flex-col justify-center">
           <div className="max-w-xl">
@@ -27,30 +27,29 @@ export default async function LoginPage({ searchParams }: Props) {
               IT Asset Tracker
             </p>
             <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
-              Hybrid sign-in for a clean internal asset workflow.
+              Production-grade access for internal asset operations.
             </h1>
             <p className="mt-6 text-base leading-8 text-slate-600">
-              Magic link and email/password access both land in the same Supabase-backed workspace,
-              with clear roles for admins and staff.
+              Sign in to manage inventory, assignments, maintenance history, and warranty actions from one structured workspace.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               <div className="rounded-[1.75rem] border border-white/70 bg-white/70 p-5 shadow-sm backdrop-blur">
                 <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
                   <ShieldCheck className="h-4 w-4" />
-                  Safe entry
+                  Verified access
                 </p>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Middleware guards protected routes and returns authenticated users to the dashboard.
+                  Protected routes, role checks, and session redirects keep staff and admins in the correct workflow.
                 </p>
               </div>
               <div className="rounded-[1.75rem] border border-white/70 bg-white/70 p-5 shadow-sm backdrop-blur">
                 <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
                   <KeyRound className="h-4 w-4" />
-                  Orderly access
+                  Operations ready
                 </p>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Admins can manage inventory while staff stay in a read-only flow with the same layout.
+                  Admins can manage the full lifecycle while staff stay inside a controlled self-service view.
                 </p>
               </div>
             </div>

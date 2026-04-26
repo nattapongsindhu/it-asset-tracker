@@ -46,6 +46,16 @@ type ProfileRow = {
   id: string
 }
 
+type MaintenanceReportRow = {
+  action_taken: string | null
+  asset_tag_snapshot: string | null
+  cost: number | string | null
+  created_at: string
+  created_by_profile: ProfileRow[] | ProfileRow | null
+  notes: string | null
+  technician_name: string | null
+}
+
 function getProfileLabel(profile: ProfileRow | undefined | null, fallback = 'Unknown user') {
   return profile?.email?.trim() || fallback
 }
@@ -60,6 +70,14 @@ function unwrapLocation(location: AssetLocationRow[] | AssetLocationRow | null |
   }
 
   return location ?? null
+}
+
+function unwrapProfile(profile: ProfileRow[] | ProfileRow | null | undefined) {
+  if (Array.isArray(profile)) {
+    return profile[0] ?? null
+  }
+
+  return profile ?? null
 }
 
 function buildAssetSearchFilter(query: string) {
@@ -85,9 +103,22 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
   let typeOptions: string[] = []
   let users: AssetUserOption[] = []
   let locationOptions: AssetLocationOption[] = []
+  let monthlyMaintenanceRows: Array<{
+    actionTaken: string
+    assetTag: string
+    cost: number | null
+    createdAt: string
+    createdBy: string
+    notes: string | null
+    technicianName: string | null
+  }> = []
   let loadError = ''
 
   try {
+    const currentMonth = new Date()
+    const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
+    const nextMonthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
+
     let assetQuery = supabase
       .from('assets')
       .select(
@@ -116,15 +147,24 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
       { data: typeRows, error: typeError },
       { data: profileRows, error: profileListError },
       { data: locationRows, error: locationError },
+      { data: maintenanceRows, error: maintenanceError },
     ] = await Promise.all([
       assetQuery,
       supabase.from('assets').select('category').order('category'),
       supabase.from('profiles').select('id, email').not('email', 'is', null).order('email'),
       supabase.from('locations').select('id, name, building, floor').order('name'),
+      supabase
+        .from('maintenance_logs')
+        .select(
+          'asset_tag_snapshot, action_taken, technician_name, cost, notes, created_at, created_by_profile:profiles!maintenance_logs_created_by_fkey(id, email)'
+        )
+        .gte('created_at', monthStart.toISOString())
+        .lt('created_at', nextMonthStart.toISOString())
+        .order('created_at', { ascending: false }),
     ])
 
-    if (assetError || typeError || profileListError || locationError) {
-      throw assetError ?? typeError ?? profileListError ?? locationError
+    if (assetError || typeError || profileListError || locationError || maintenanceError) {
+      throw assetError ?? typeError ?? profileListError ?? locationError ?? maintenanceError
     }
 
     const assignedUserIds = Array.from(
@@ -195,6 +235,26 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
     }))
 
     locationOptions = (locationRows ?? []).map(mapLocationOption)
+
+    monthlyMaintenanceRows = ((maintenanceRows ?? []) as MaintenanceReportRow[]).map(row => {
+      const createdBy = unwrapProfile(row.created_by_profile)
+      const parsedCost =
+        typeof row.cost === 'number'
+          ? row.cost
+          : typeof row.cost === 'string' && row.cost.trim().length > 0
+            ? Number(row.cost)
+            : null
+
+      return {
+        actionTaken: row.action_taken ?? 'Maintenance update',
+        assetTag: row.asset_tag_snapshot ?? 'Unknown asset',
+        cost: parsedCost !== null && Number.isFinite(parsedCost) ? parsedCost : null,
+        createdAt: row.created_at,
+        createdBy: createdBy?.email?.trim() || '-',
+        notes: row.notes,
+        technicianName: row.technician_name,
+      }
+    })
   } catch {
     loadError = 'Unable to load assets right now.'
   }
@@ -334,7 +394,17 @@ export default async function DashboardAssetsPage({ searchParams }: Props) {
           ) : assets.length === 0 ? (
             <p className="p-6 text-sm text-slate-500">No assets matched the current filters.</p>
           ) : (
-            <AssetTable action={bulkUpdateAssetStatus} assets={assets} isAdmin />
+            <AssetTable
+              action={bulkUpdateAssetStatus}
+              assets={assets}
+              isAdmin
+              locationOptions={locationOptions}
+              monthlyMaintenanceRows={monthlyMaintenanceRows}
+              monthlyReportLabel={new Intl.DateTimeFormat('en-US', {
+                month: 'long',
+                year: 'numeric',
+              }).format(new Date())}
+            />
           )}
         </div>
       </section>

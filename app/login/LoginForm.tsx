@@ -53,8 +53,11 @@ export function LoginForm({ nextPath }: Props) {
         </p>
         <h1 className="mt-2 text-2xl font-semibold text-slate-900">Access the asset workspace</h1>
         <p className="mt-3 text-sm leading-6 text-slate-500">
-          Sign in with your company email and password to continue into the workspace.
+          Sign in with your company credentials to continue into the production asset workspace.
         </p>
+        <div className="mt-4 rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          Admins can manage inventory, lifecycle, and reports. Staff accounts stay scoped to assigned assets and support flows.
+        </div>
       </div>
 
       <form onSubmit={handlePasswordSignIn} className="flex flex-col gap-5">
